@@ -5,6 +5,7 @@ import android.text.method.TextKeyListener.Capitalize
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -28,6 +30,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -61,8 +64,28 @@ fun StartScreen(navController: NavController, viewModel: LocationViewModel) {
         modifier = Modifier.fillMaxSize(),
         painter = painterResource(R.drawable.background_welcome),
         contentDescription = null,
-        contentScale = ContentScale.FillWidth
+        contentScale = ContentScale.FillBounds
     )
+    Box(modifier = Modifier.fillMaxSize()) {
+        Button(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(125.dp)
+                .clip(CircleShape)
+                .padding(10.dp),
+            onClick = {
+                navController.navigate(Screen.RoutePlanner.route)
+            },
+            colors = ButtonDefaults.buttonColors(Color(0xFF0D99FF))
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.navi_arrow),
+                contentDescription = "Mój obrazek",
+                modifier = Modifier.size(50.dp),
+                tint = Color.White
+            )
+        }
+    }
 }
 
 @Composable
