@@ -48,7 +48,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.TraSka.CardContent
 import com.TraSka.FirebaseCallback
 import com.TraSka.LocationViewModel
 import com.TraSka.R
