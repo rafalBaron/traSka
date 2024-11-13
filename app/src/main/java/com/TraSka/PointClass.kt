@@ -1,6 +1,5 @@
 package com.TraSka
 
-import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.database.IgnoreExtraProperties
 @IgnoreExtraProperties
 data class Point(

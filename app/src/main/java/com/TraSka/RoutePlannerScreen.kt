@@ -27,11 +27,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
@@ -42,6 +40,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -77,7 +76,7 @@ import com.google.maps.android.compose.rememberCameraPositionState
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @SuppressLint("StateFlowValueCalledInComposition", "UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun RoutePlanner(
+fun RoutePlannerScreen(
     navController: NavController,
     viewModel: LocationViewModel,
 ) {
@@ -88,37 +87,31 @@ fun RoutePlanner(
 
     when {
         notLoggedAlert.value -> {
-            AlertDialogExample(
-                onDismissRequest = {
-                    notLoggedAlert.value = false
-                },
-                onConfirmation = {
-                    notLoggedAlert.value = false
-                    navController.navigate(Screen.WelcomeScreen.route)
-                },
-                dialogTitle = "Saving only for logged users!",
-                icon = Icons.Default.Lock
+            AlertDialogExample(onDismissRequest = {
+                notLoggedAlert.value = false
+            }, onConfirmation = {
+                notLoggedAlert.value = false
+                navController.navigate(ScreenFlowHandler.LoginScreen.route)
+            }, dialogTitle = "Saving only for logged users!", icon = Icons.Default.Lock
             )
         }
     }
-    Scaffold(
-        topBar = {
-            Row (){
-                Icon(
-                    imageVector = Icons.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    modifier = Modifier
-                        .padding(20.dp,20.dp,0.dp,0.dp)
-                        .clip(shape = RoundedCornerShape(10.dp))
-                        .background(Color(0xFF248A12))
-                        .size(40.dp,50.dp)
-                        .clickable {
-                            navController.navigateUp()
-                        },
-                )
-            }
+    Scaffold(topBar = {
+        Row() {
+            Icon(
+                imageVector = Icons.Filled.ArrowBack,
+                contentDescription = "Back",
+                modifier = Modifier
+                    .padding(20.dp, 20.dp, 0.dp, 0.dp)
+                    .clip(shape = RoundedCornerShape(10.dp))
+                    .background(Color(0xFF248A12))
+                    .size(40.dp, 50.dp)
+                    .clickable {
+                        navController.navigateUp()
+                    },
+            )
         }
-    ) {
+    }) {
         Column(modifier = Modifier.background(Color(0xFF222831))) {
             Row(
                 modifier = Modifier
@@ -134,8 +127,7 @@ fun RoutePlanner(
                         .weight(1f),
                     contentPadding = PaddingValues(0.dp),
                     border = if (selectedOption == "driving") BorderStroke(
-                        2.dp,
-                        Color(0xFF0D99FF)
+                        2.dp, Color(0xFF0D99FF)
                     ) else null,
                     colors = ButtonDefaults.buttonColors(
                         if (selectedOption == "driving") Color.White else Color(0xFF0D99FF)
@@ -156,8 +148,7 @@ fun RoutePlanner(
                         .weight(1f),
                     contentPadding = PaddingValues(0.dp),
                     border = if (selectedOption == "walking") BorderStroke(
-                        2.dp,
-                        Color(0xFF0D99FF)
+                        2.dp, Color(0xFF0D99FF)
                     ) else null,
                     colors = ButtonDefaults.buttonColors(
                         if (selectedOption == "walking") Color.White else Color(0xFF0D99FF)
@@ -173,19 +164,20 @@ fun RoutePlanner(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp,10.dp),
+                    .padding(20.dp, 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 OutlinedTextFieldBackground(Color.White) {
                     OutlinedTextField(
-                        value = viewModel.text, onValueChange = {
+                        value = viewModel.text,
+                        onValueChange = {
                             viewModel.text = it
                             viewModel.searchPlaces(it)
                         },
-                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                        colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFF0D99FF),
-                            unfocusedBorderColor = Color.Transparent
+                            unfocusedBorderColor = Color.Transparent,
                         ),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
@@ -212,12 +204,11 @@ fun RoutePlanner(
                             viewModel.locationAutofill.clear()
                         } else {
                             Toast.makeText(
-                                context,
-                                "Maximum number of points! (12)",
-                                Toast.LENGTH_SHORT
+                                context, "Maximum number of points! (12)", Toast.LENGTH_SHORT
                             ).show()
                         }
-                    }, shape = RoundedCornerShape(10.dp),
+                    },
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
                         .size(80.dp, 55.dp)
                         .weight(2f),
@@ -248,8 +239,7 @@ fun RoutePlanner(
                         ) {
                             AnimatedVisibility(
                                 viewModel.locationAutofill.isNotEmpty(),
-                                modifier = Modifier
-                                    .fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 LazyColumn(
                                     verticalArrangement = Arrangement.spacedBy(5.dp),
@@ -269,8 +259,7 @@ fun RoutePlanner(
                                                     viewModel.text = it.address
                                                     viewModel.locationAutofill.clear()
                                                     viewModel.getCoordinates(it)
-                                                },
-                                            verticalAlignment = Alignment.CenterVertically
+                                                }, verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Spacer(modifier = Modifier.width(10.dp))
                                             Icon(
@@ -322,8 +311,7 @@ fun RoutePlanner(
                                                 .padding(10.dp, 0.dp, 0.dp, 0.dp),
                                             contentPadding = PaddingValues(0.dp),
                                             colors = ButtonDefaults.buttonColors(Color.White)
-                                        )
-                                        {
+                                        ) {
                                             Image(
                                                 imageVector = Icons.Filled.Home,
                                                 contentDescription = "Home"
@@ -338,8 +326,7 @@ fun RoutePlanner(
                                                 .padding(10.dp, 0.dp, 0.dp, 0.dp),
                                             contentPadding = PaddingValues(0.dp),
                                             colors = ButtonDefaults.buttonColors(Color.White)
-                                        )
-                                        {
+                                        ) {
                                             Image(
                                                 imageVector = Icons.Filled.Place,
                                                 contentDescription = "Place"
@@ -354,8 +341,7 @@ fun RoutePlanner(
                                                 .padding(10.dp, 0.dp, 0.dp, 0.dp),
                                             contentPadding = PaddingValues(0.dp),
                                             colors = ButtonDefaults.buttonColors(Color.White)
-                                        )
-                                        {
+                                        ) {
                                             Image(
                                                 imageVector = Icons.Filled.MoreVert,
                                                 contentDescription = "Waypoint"
@@ -370,14 +356,12 @@ fun RoutePlanner(
                                         maxLines = 1,
                                         fontWeight = FontWeight.Bold
                                     )
-                                    Image(
-                                        imageVector = Icons.Filled.Delete,
+                                    Image(imageVector = Icons.Filled.Delete,
                                         contentDescription = null,
                                         modifier = Modifier
                                             .padding(0.dp, 0.dp, 13.dp, 0.dp)
                                             .size(20.dp, 20.dp)
-                                            .clickable { viewModel.delPoint(point) }
-                                    )
+                                            .clickable { viewModel.delPoint(point) })
                                 }
                             }
                         }
@@ -401,7 +385,7 @@ fun RoutePlanner(
                                     } else {
                                         Toast.makeText(
                                             context,
-                                            "Choose at least 2 points!",
+                                            "Choose at least 2 pointes!",
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     }
@@ -419,8 +403,7 @@ fun RoutePlanner(
                             )
                         ) {
                             Text(
-                                text = "Save Route",
-                                textAlign = TextAlign.Center
+                                text = "Save Route", textAlign = TextAlign.Center
                             )
                         }
                         Spacer(modifier = Modifier.width(10.dp))
@@ -430,9 +413,7 @@ fun RoutePlanner(
                                     viewModel.sendRequestOpenMaps(context = context, selectedOption)
                                 } else {
                                     Toast.makeText(
-                                        context,
-                                        "Choose at least 2 points!",
-                                        Toast.LENGTH_SHORT
+                                        context, "Choose at least 2 pointes!", Toast.LENGTH_SHORT
                                     ).show()
                                 }
                             },
@@ -468,19 +449,15 @@ fun RoutePlanner(
                             AdvancedMarker(
                                 state = MarkerState(
                                     position = LatLng(
-                                        point.latLng!![0],
-                                        point.latLng!![1]
+                                        point.latLng!![0], point.latLng!![1]
                                     )
-                                ),
-                                title = point.address
+                                ), title = point.address
                             )
-                            cameraPositionState.position =
-                                CameraPosition.fromLatLngZoom(
-                                    LatLng(
-                                        point.latLng!![0],
-                                        point.latLng!![1]
-                                    ), 10f
-                                )
+                            cameraPositionState.position = CameraPosition.fromLatLngZoom(
+                                LatLng(
+                                    point.latLng!![0], point.latLng!![1]
+                                ), 10f
+                            )
                         }
                     }
                 }
@@ -496,7 +473,8 @@ fun RoutePlanner(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+//region Composables
+
 @Composable
 fun AlertDialogExample(
     onDismissRequest: () -> Unit,
@@ -504,117 +482,97 @@ fun AlertDialogExample(
     dialogTitle: String,
     icon: ImageVector,
 ) {
-    AlertDialog(
-        icon = {
-            Image(
-                painter = painterResource(R.drawable.acc), contentDescription = "acc",
-                modifier = Modifier.size(80.dp, 80.dp)
+    AlertDialog(icon = {
+        Image(
+            painter = painterResource(R.drawable.acc),
+            contentDescription = "acc",
+            modifier = Modifier.size(80.dp, 80.dp)
+        )
+
+    }, title = {
+        Text(text = dialogTitle)
+    }, onDismissRequest = {
+        onDismissRequest()
+    }, confirmButton = {
+        TextButton(
+            onClick = {
+                onConfirmation()
+            },
+            colors = ButtonDefaults.buttonColors(Color.Black),
+            shape = RoundedCornerShape(10.dp)
+        ) {
+            Text(
+                "Login", fontSize = 18.sp
+
             )
-
-        },
-        title = {
-            Text(text = dialogTitle)
-        },
-        onDismissRequest = {
-            onDismissRequest()
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onConfirmation()
-                },
-                colors = ButtonDefaults.buttonColors(Color.Black),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text(
-                    "Login",
-                    fontSize = 18.sp
-
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = {
-                    onDismissRequest()
-                },
-                colors = ButtonDefaults.buttonColors(Color.Black),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text(
-                    "Cancel",
-                    fontSize = 18.sp
-                )
-            }
         }
-    )
+    }, dismissButton = {
+        TextButton(
+            onClick = {
+                onDismissRequest()
+            },
+            colors = ButtonDefaults.buttonColors(Color.Black),
+            shape = RoundedCornerShape(10.dp)
+        ) {
+            Text(
+                "Cancel", fontSize = 18.sp
+            )
+        }
+    })
 }
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun ShowAlertDialog(
-    showDialog: MutableState<Boolean>,
-    onDismissRequest: () -> Unit,
-    onSave: (String) -> Unit
+    showDialog: MutableState<Boolean>, onDismissRequest: () -> Unit, onSave: (String) -> Unit
 ) {
     val name = remember { mutableStateOf("") }
 
-    AlertDialog(
-        onDismissRequest = { showDialog.value = false },
-        title = {
+    AlertDialog(onDismissRequest = { showDialog.value = false }, title = {
+        Text(
+            "Enter route name", fontWeight = FontWeight.Bold
+        )
+    }, text = {
+        OutlinedTextField(value = name.value,
+            onValueChange = { name.value = it },
+            label = { Text("Name") },
+            textStyle = TextStyle.Default.copy(fontSize = 20.sp, fontWeight = FontWeight.Bold),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFF0D99FF),
+                unfocusedBorderColor = Color.Transparent,
+            ),
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier
+                .width(280.dp)
+                .height(60.dp),
+            maxLines = 1
+        )
+    }, confirmButton = {
+        Button(
+            onClick = {
+                onSave(name.value)
+                showDialog.value = false
+            }, shape = RoundedCornerShape(10.dp), colors = ButtonDefaults.buttonColors(
+                Color.Black
+            )
+        ) {
             Text(
-                "Enter route name",
-                fontWeight = FontWeight.Bold
+                "Save", fontSize = 18.sp
             )
-        },
-        text = {
-            OutlinedTextField(
-                value = name.value, onValueChange = { name.value = it },
-                label = { Text("Name") },
-                textStyle = TextStyle.Default.copy(fontSize = 20.sp, fontWeight = FontWeight.Bold),
-                colors = TextFieldDefaults.outlinedTextFieldColors(
-                    focusedBorderColor = Color(0xFF0D99FF),
-                    unfocusedBorderColor = Color.Transparent
-                ),
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier
-                    .width(280.dp)
-                    .height(60.dp),
-                maxLines = 1
-            )
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    onSave(name.value)
-                    showDialog.value = false
-                },
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(
-                    Color.Black
-                )
-            ) {
-                Text(
-                    "Save",
-                    fontSize = 18.sp
-                )
-            }
-        },
-        dismissButton = {
-            Button(
-                onClick = { showDialog.value = false },
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(
-                    Color.Black
-                )
-            ) {
-                Text(
-                    "Cancel",
-                    fontSize = 18.sp
-                )
-            }
         }
-    )
+    }, dismissButton = {
+        Button(
+            onClick = { showDialog.value = false },
+            shape = RoundedCornerShape(10.dp),
+            colors = ButtonDefaults.buttonColors(
+                Color.Black
+            )
+        ) {
+            Text(
+                "Cancel", fontSize = 18.sp
+            )
+        }
+    })
 }
 
 @Composable
@@ -630,3 +588,5 @@ fun OutlinedTextFieldBackground(color: Color, content: @Composable () -> Unit) {
         content()
     }
 }
+
+//endregion

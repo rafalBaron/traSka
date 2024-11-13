@@ -27,8 +27,9 @@ val RobotoFontFamily = FontFamily(
 val Typography = Typography(
     bodyLarge = TextStyle(
         fontFamily = RobotoFontFamily,
+        fontStyle = FontStyle(R.font.roboto_medium),
         fontSize = 16.sp,
         lineHeight = 24.sp,
-        letterSpacing = 0.5.sp
+        letterSpacing = 4.sp
     )
 )

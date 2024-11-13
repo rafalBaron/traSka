@@ -1,9 +1,6 @@
 package com.TraSka
 
-import android.R.attr.label
-import android.R.attr.text
 import android.annotation.SuppressLint
-import android.content.Context.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,11 +26,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,19 +37,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat.getSystemService
 import androidx.navigation.NavController
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SavedRoutesScreen(
     navController: NavController,
@@ -67,15 +58,15 @@ fun SavedRoutesScreen(
 
     Scaffold(
         topBar = {
-            Row (){
+            Row() {
                 Icon(
                     imageVector = Icons.Filled.ArrowBack,
                     contentDescription = "Back",
                     modifier = Modifier
-                        .padding(15.dp,15.dp,0.dp,0.dp)
+                        .padding(15.dp, 15.dp, 0.dp, 0.dp)
                         .clip(shape = RoundedCornerShape(10.dp))
                         .background(Color(0xFF248A12))
-                        .size(40.dp,50.dp)
+                        .size(40.dp, 50.dp)
                         .clickable {
                             navController.navigateUp()
                         },
@@ -128,7 +119,7 @@ fun SavedRoutesScreen(
                                         .size(30.dp, 30.dp)
                                 )
                                 Text(
-                                    text = route.points!!.first().address!!,
+                                    text = route.point!!.first().address!!,
                                     modifier = Modifier.width(70.dp),
                                     maxLines = 2
                                 )
@@ -146,9 +137,9 @@ fun SavedRoutesScreen(
                                         .size(30.dp, 30.dp)
                                 )
                                 Text(
-                                    text = route.points!!.last().address!!,
+                                    text = route.point!!.last().address!!,
                                     modifier = Modifier.width(70.dp),
-                                    maxLines = 2
+                                    maxLines = 2,
                                 )
                             }
                             Text(
@@ -193,7 +184,6 @@ fun SavedRoutesScreen(
                                             if (routes.value!!.size == 1) {
                                                 viewModel.delRoute(route, context)
                                                 routes.value = routes.value?.minus(route)
-                                                //navController.navigate(Screen.HomeScreenLogged.route)
                                             } else {
                                                 viewModel.delRoute(route, context)
                                                 routes.value = routes.value?.minus(route)
@@ -206,17 +196,6 @@ fun SavedRoutesScreen(
                             }
                         }
                         Row() {
-                            /*Button(
-                                onClick = {
-                                    clipboardManager.setText(AnnotatedString(route.shareUrl!!))
-                                },
-                                modifier = Modifier,
-                                shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.buttonColors(Color(0xFF1A6100))
-                            ) {
-                                Text(text = "Share route")
-                            }*/
-
                             Button(
                                 onClick = { viewModel.sendRequestOpenMaps(context, route) },
                                 modifier = Modifier,
@@ -234,7 +213,8 @@ fun SavedRoutesScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+//region Composables
+
 @Composable
 fun DeleteRouteDialog(
     onDismissRequest: () -> Unit,
@@ -244,8 +224,9 @@ fun DeleteRouteDialog(
 ) {
     AlertDialog(
         icon = {
-            Image(imageVector = Icons.Default.Delete, contentDescription = "acc",
-                modifier = Modifier.size(80.dp,80.dp)
+            Image(
+                imageVector = Icons.Default.Delete, contentDescription = "acc",
+                modifier = Modifier.size(80.dp, 80.dp)
             )
 
         },
@@ -263,7 +244,8 @@ fun DeleteRouteDialog(
                 colors = ButtonDefaults.buttonColors(Color.Black),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Delete",
+                Text(
+                    "Delete",
                     fontSize = 18.sp
 
                 )
@@ -277,9 +259,13 @@ fun DeleteRouteDialog(
                 colors = ButtonDefaults.buttonColors(Color.Black),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Cancel",
-                    fontSize = 18.sp)
+                Text(
+                    "Cancel",
+                    fontSize = 18.sp
+                )
             }
         }
     )
 }
+
+//endregion
