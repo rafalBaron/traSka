@@ -1,21 +1,15 @@
 package com.TraSka.com.TraSka
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.clipScrollableContainer
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.unit.dp
-import kotlin.math.abs
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,7 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -33,7 +26,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.AlertDialog
@@ -41,50 +33,29 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CardElevation
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.DefaultShadowColor
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.toUpperCase
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.TraSka.LocationViewModel
 import com.TraSka.R
 import com.TraSka.Route
-import com.TraSka.Screen
+import com.TraSka.ScreenFlowHandler
 import com.TraSka.User
-import com.TraSka.ui.theme.Purple40
-import com.TraSka.ui.theme.Purple80
-import com.TraSka.ui.theme.PurpleGrey40
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser
 import java.util.Locale
-import kotlin.math.roundToLong
-
-private val mAuth: FirebaseAuth = FirebaseAuth.getInstance()
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun HomeScreenLogged(navController: NavController, viewModel: LocationViewModel) {
+fun HomeScreen(navController: NavController, viewModel: LocationViewModel) {
     val currentUser: User? = viewModel.getUser()
     val routes = remember { mutableStateOf(viewModel.currentSavedRoutes) }
     val openAlertDialog = remember { mutableStateOf(false) }
@@ -101,7 +72,7 @@ fun HomeScreenLogged(navController: NavController, viewModel: LocationViewModel)
                         viewModel
                             .clearViewModel()
                             .also {
-                                navController.navigate(Screen.StartScreen.route)
+                                navController.navigate(ScreenFlowHandler.StartScreen.route)
                             }
                         println("Logout")
                     },
@@ -294,7 +265,7 @@ fun HomeScreenLogged(navController: NavController, viewModel: LocationViewModel)
                                                     modifier = Modifier.size(40.dp)
                                                 )
                                                 Spacer(modifier = Modifier.width(10.dp))
-                                                routesSub[index].points?.first().let {
+                                                routesSub[index].point?.first().let {
                                                     it!!.address?.let { it1 ->
                                                         Text(
                                                             text = it1,
@@ -315,9 +286,9 @@ fun HomeScreenLogged(navController: NavController, viewModel: LocationViewModel)
                                                     modifier = Modifier.size(40.dp)
                                                 )
                                                 Spacer(modifier = Modifier.width(10.dp))
-                                                if (routesSub[index].points!!.size > 2) {
+                                                if (routesSub[index].point!!.size > 2) {
                                                     Text(
-                                                        text = "(" + (routesSub[index].points!!.size - 2).toString() + ")",
+                                                        text = "(" + (routesSub[index].point!!.size - 2).toString() + ")",
                                                         color = Color.White,
                                                     )
                                                 }
@@ -333,7 +304,7 @@ fun HomeScreenLogged(navController: NavController, viewModel: LocationViewModel)
                                                     modifier = Modifier.size(40.dp)
                                                 )
                                                 Spacer(modifier = Modifier.width(10.dp))
-                                                routesSub[index].points?.last().let {
+                                                routesSub[index].point?.last().let {
                                                     it!!.address?.let { it1 ->
                                                         Text(
                                                             text = it1,
@@ -406,7 +377,7 @@ fun HomeScreenLogged(navController: NavController, viewModel: LocationViewModel)
                             Spacer(modifier = Modifier.height(20.dp))
 
                             Button(
-                                onClick = { navController.navigate(Screen.RoutePlanner.route) },
+                                onClick = { navController.navigate(ScreenFlowHandler.RoutePlannerScreen.route) },
                                 shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier
                                     .size(50.dp, 50.dp),
@@ -425,7 +396,7 @@ fun HomeScreenLogged(navController: NavController, viewModel: LocationViewModel)
                 if (routes.value.isNotEmpty()) {
                     Row(horizontalArrangement = Arrangement.SpaceBetween) {
                         Button(
-                            onClick = { navController.navigate(Screen.SavedRoutesScreen.route) },
+                            onClick = { navController.navigate(ScreenFlowHandler.SavedRoutesScreen.route) },
                             modifier = Modifier
                                 .height(110.dp)
                                 .fillMaxWidth()
@@ -444,7 +415,7 @@ fun HomeScreenLogged(navController: NavController, viewModel: LocationViewModel)
                         Spacer(modifier = Modifier.width(15.dp))
                         Button(
                             onClick = {
-                                navController.navigate(Screen.RoutePlanner.route)
+                                navController.navigate(ScreenFlowHandler.RoutePlannerScreen.route)
                             },
                             modifier = Modifier
                                 .height(110.dp)
@@ -469,7 +440,8 @@ fun HomeScreenLogged(navController: NavController, viewModel: LocationViewModel)
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+//region Composables
+
 @Composable
 fun AlertDialogExample(
     onDismissRequest: () -> Unit,
@@ -519,10 +491,4 @@ fun AlertDialogExample(
     )
 }
 
-/*
-
-@Preview(name = "HomeScreenLogged")
-@Composable
-private fun PreviewHomeScreen() {
-    HomeScreenLogged()
-}*/
+//endregion

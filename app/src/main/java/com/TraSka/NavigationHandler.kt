@@ -1,6 +1,6 @@
 package com.TraSka
 
-import WelcomeScreen
+import LoginScreen
 import android.os.Build
 import android.util.Log
 import androidx.activity.compose.BackHandler
@@ -13,7 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.TraSka.com.TraSka.HomeScreenLogged
+import com.TraSka.com.TraSka.HomeScreen
 import com.TraSka.com.TraSka.RegisterScreen
 
 
@@ -22,15 +22,15 @@ import com.TraSka.com.TraSka.RegisterScreen
 fun Navigation(viewModel: LocationViewModel) {
     val navController = rememberNavController()
 
-    NavHost(navController, startDestination = Screen.StartScreen.route) {
-        composable("welcome_screen",
+    NavHost(navController, startDestination = ScreenFlowHandler.StartScreen.route) {
+        composable("login_screen",
             exitTransition = {
                 fadeOut(animationSpec = tween(500))
                 /*slideOutOfContainer(
                     AnimatedContentTransitionScope.SlideDirection.Up,
                     animationSpec = tween(500)
                 )*/
-            }) { WelcomeScreen(navController,viewModel) }
+            }) { LoginScreen(navController, viewModel) }
         composable("register_screen",
             enterTransition = {
                 fadeIn(animationSpec = tween(500))
@@ -45,8 +45,9 @@ fun Navigation(viewModel: LocationViewModel) {
                     AnimatedContentTransitionScope.SlideDirection.Right,
                     animationSpec = tween(500)
                 )*/
-            }) { RegisterScreen(navController,viewModel) }
-        composable("home_screen_logged",
+            }) { RegisterScreen(navController, viewModel) }
+        composable(
+            "home_screen",
             enterTransition = {
                 slideIntoContainer(
                     AnimatedContentTransitionScope.SlideDirection.Left,
@@ -58,14 +59,17 @@ fun Navigation(viewModel: LocationViewModel) {
                     AnimatedContentTransitionScope.SlideDirection.Left,
                     animationSpec = tween(500)
                 )
-            }*/) {
+            }*/
+        ) {
 
             BackHandler(true) {
-                Log.i("LOG_TAG","Clicked back, do nothing! There is no back!")
+                Log.i("LOG_TAG", "Clicked back, do nothing! There is no back!")
             }
 
-            HomeScreenLogged(navController,viewModel) }
-        composable("register_successful",
+            HomeScreen(navController, viewModel)
+        }
+        composable(
+            "register_successful_screen",
             enterTransition = {
                 slideIntoContainer(
                     AnimatedContentTransitionScope.SlideDirection.Left,
@@ -77,14 +81,17 @@ fun Navigation(viewModel: LocationViewModel) {
                     AnimatedContentTransitionScope.SlideDirection.Right,
                     animationSpec = tween(500)
                 )
-            }*/) {
+            }*/
+        ) {
 
             BackHandler(true) {
-                Log.i("LOG_TAG","Clicked back, do nothing! There is no back!")
+                Log.i("LOG_TAG", "Clicked back, do nothing! There is no back!")
             }
 
-            RegisterSuccessful(navController,viewModel) }
-        composable("register_error",
+            RegisterSuccessfulScreen(navController)
+        }
+        composable(
+            "register_error_screen",
             enterTransition = {
                 slideIntoContainer(
                     AnimatedContentTransitionScope.SlideDirection.Left,
@@ -96,15 +103,18 @@ fun Navigation(viewModel: LocationViewModel) {
                     AnimatedContentTransitionScope.SlideDirection.Right,
                     animationSpec = tween(500)
                 )
-            }*/) {
+            }*/
+        ) {
 
             BackHandler(true) {
-                Log.i("LOG_TAG","Clicked back, do nothing! There is no back!")
+                Log.i("LOG_TAG", "Clicked back, do nothing! There is no back!")
             }
 
-            RegisterError(navController,viewModel) }
+            RegisterErrorScreen(navController)
+        }
 
-        composable("route_planner",
+        composable(
+            "route_planner_screen",
             enterTransition = {
                 slideIntoContainer(
                     AnimatedContentTransitionScope.SlideDirection.Left,
@@ -116,11 +126,13 @@ fun Navigation(viewModel: LocationViewModel) {
                     AnimatedContentTransitionScope.SlideDirection.Right,
                     animationSpec = tween(500)
                 )
-            }*/) {
+            }*/
+        ) {
 
-            RoutePlanner(navController,viewModel) }
+            RoutePlannerScreen(navController, viewModel)
+        }
 
-        composable("saved_routes",
+        composable("saved_routes_screen",
             enterTransition = {
                 slideIntoContainer(
                     AnimatedContentTransitionScope.SlideDirection.Right,
@@ -134,9 +146,11 @@ fun Navigation(viewModel: LocationViewModel) {
                 )
             }) {
 
-            SavedRoutesScreen(navController,viewModel) }
+            SavedRoutesScreen(navController, viewModel)
+        }
 
-        composable("start_screen",
+        composable(
+            "start_screen",
             enterTransition = {
                 slideIntoContainer(
                     AnimatedContentTransitionScope.SlideDirection.Right,
@@ -148,9 +162,11 @@ fun Navigation(viewModel: LocationViewModel) {
                     AnimatedContentTransitionScope.SlideDirection.Right,
                     animationSpec = tween(500)
                 )
-            }*/) {
+            }*/
+        ) {
 
-            StartScreen(navController,viewModel) }
+            StartScreen(navController, viewModel)
+        }
     }
 }
 

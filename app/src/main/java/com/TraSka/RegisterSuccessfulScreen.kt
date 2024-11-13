@@ -19,32 +19,34 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 
 @Composable
-fun RegisterError( navController: NavController,
-                   viewModel: LocationViewModel,
-    modifier: Modifier = Modifier
+fun RegisterSuccessfulScreen(
+    navController: NavController
 ) {
-    Box(modifier = Modifier.fillMaxSize(),
+    Box(
+        modifier = Modifier.fillMaxSize(),
     ) {
-        Column(modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White),
             verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally) {
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Image(
-                painter = painterResource(R.drawable.error),
+                painter = painterResource(R.drawable.success),
                 contentDescription = null,
-                modifier = Modifier.size(100.dp,100.dp)
+                modifier = Modifier.size(100.dp, 100.dp)
             )
 
             Spacer(modifier = Modifier.height(50.dp))
 
-            Text(text = "Something went wrong",
+            Text(
+                text = "Registration successful!",
                 fontSize = 20.sp,
                 letterSpacing = 2.sp,
                 fontWeight = FontWeight.Bold
@@ -53,15 +55,15 @@ fun RegisterError( navController: NavController,
             Spacer(modifier = Modifier.height(50.dp))
 
             Button(
-                onClick = { navController.navigate(Screen.WelcomeScreen.route) },
+                onClick = { navController.navigate(ScreenFlowHandler.HomeScreen.route) },
                 colors = ButtonDefaults.buttonColors(Color.Black),
                 shape = RoundedCornerShape(10),
                 modifier = Modifier.size(width = 150.dp, height = 40.dp),
             )
             {
                 Text(
-                    text = "Go back",
-                    fontSize = 16.sp,
+                    text = "Let's go!",
+                    fontSize = 18.sp,
                     letterSpacing = 2.sp,
                     color = Color.White
                 )
@@ -69,10 +71,3 @@ fun RegisterError( navController: NavController,
         }
     }
 }
-
-/*
-@Preview(name = "RegisterError")
-@Composable
-private fun PreviewRegisterSuccessful() {
-    RegisterError()
-}*/

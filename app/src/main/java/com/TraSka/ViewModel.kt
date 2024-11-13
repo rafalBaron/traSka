@@ -12,8 +12,6 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.volley.Request
@@ -33,9 +31,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.json.JSONObject
-import java.lang.Boolean
 import javax.inject.Inject
-
 
 sealed class LocationState {
     object NoPermission : LocationState()
@@ -62,20 +58,15 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
     private val placesClient by lazy { Places.createClient(applicationContext) }
     lateinit var fusedLocationClient: FusedLocationProviderClient
     lateinit var geoCoder: Geocoder
-
     var currentSavedRoutes by mutableStateOf(listOf<Route>())
-
     var routePoints by mutableStateOf(listOf<Point>())
         private set
-
     var locationState by mutableStateOf<LocationState>(LocationState.NoPermission)
     val locationAutofill = mutableStateListOf<AutocompleteResult>()
     var currentLatLong by mutableStateOf(LatLng(51.9189046, 19.1343786))
     var currentPointId by mutableStateOf(String())
     var currentSavingRouteLen = 0f
-
     var isLogged by mutableStateOf(false)
-
     private var job: Job? = null
 
     fun clearViewModel() {
@@ -84,31 +75,29 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         currentSavingRouteLen = 0f
     }
 
-    fun addPoint(point: Point) {
-        routePoints = routePoints + point
+    fun addPoint(pointClass: Point) {
+        routePoints = routePoints + pointClass
     }
 
-    fun delPoint(point: Point) {
-        routePoints = routePoints - point
+    fun delPoint(pointClass: Point) {
+        routePoints = routePoints - pointClass
     }
 
     fun delRoute(route: Route, context: Context) {
         val mDatabase: FirebaseDatabase =
             FirebaseDatabase.getInstance("https://traska-f9851-default-rtdb.europe-west1.firebasedatabase.app/")
-        val userRouteRef =
-            route.id?.let {
-                mDatabase.getReference("Users").child(currentUser!!.userData!!.uid!!).child("savedRoutes").child(
+        val userRouteRef = route.id?.let {
+            mDatabase.getReference("Users").child(currentUser!!.userData!!.uid!!)
+                .child("savedRoutes").child(
                     it
                 )
-            }
+        }
 
-        userRouteRef!!.removeValue()
-            .addOnSuccessListener {
+        userRouteRef!!.removeValue().addOnSuccessListener {
                 currentUser!!.savedRoutes = currentUser!!.savedRoutes?.minus(route)
                 currentSavedRoutes = currentSavedRoutes.minus(route)
                 Toast.makeText(context, "Route deleted successfully!", Toast.LENGTH_SHORT).show()
-            }
-            .addOnFailureListener { exception ->
+            }.addOnFailureListener { exception ->
                 Toast.makeText(context, "Error while deleting route!", Toast.LENGTH_SHORT).show()
             }
     }
@@ -173,8 +162,7 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
                         currentLatLong = LatLng(location.latitude, location.longitude)
                         LocationState.LocationAvailable(
                             LatLng(
-                                location.latitude,
-                                location.longitude
+                                location.latitude, location.longitude
                             )
                         )
                     }
@@ -199,12 +187,8 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         val encodedWaypoints =
             waypointsList.joinToString("|") { it.address?.replace(" ", "%20").toString() }
 
-        val urlRequest = "https://maps.googleapis.com/maps/api/directions/json?" +
-                "origin=$encodedOrigin&" +
-                "destination=$encodedDestination&" +
-                "waypoints=optimize:true|$encodedWaypoints&" +
-                "travelmode=$travelMode&" +
-                "key=" + BuildConfig.DIRECTIONS_API_KEY
+        val urlRequest =
+            "https://maps.googleapis.com/maps/api/directions/json?" + "origin=$encodedOrigin&" + "destination=$encodedDestination&" + "waypoints=optimize:true|$encodedWaypoints&" + "travelmode=$travelMode&" + "key=" + BuildConfig.DIRECTIONS_API_KEY
 
         Log.println(Log.INFO, "ZAPYTANIE1", urlRequest)
 
@@ -240,11 +224,11 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
     }
 
     fun sendRequestOpenMaps(context: Context, route: Route) {
-        val origin = route.points!!.first().address
-        val destination = route.points.last().address
+        val origin = route.point!!.first().address
+        val destination = route.point.last().address
 
         val addresses = mutableListOf<String>()
-        for (point in route.points.subList(1, route.points.size - 1)) {
+        for (point in route.point.subList(1, route.point.size - 1)) {
             val address = point.address
             addresses.add(address!!)
         }
@@ -254,12 +238,8 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         val encodedDestination = destination?.replace(" ", "%20")
         val encodedWaypoints = waypointsList.joinToString("|")
 
-        val urlRequest = "https://maps.googleapis.com/maps/api/directions/json?" +
-                "origin=$encodedOrigin&" +
-                "destination=$encodedDestination&" +
-                "waypoints=optimize:true|$encodedWaypoints&" +
-                "travelmode=${route.travelMode}&" +
-                "key=" + BuildConfig.DIRECTIONS_API_KEY
+        val urlRequest =
+            "https://maps.googleapis.com/maps/api/directions/json?" + "origin=$encodedOrigin&" + "destination=$encodedDestination&" + "waypoints=optimize:true|$encodedWaypoints&" + "travelmode=${route.travelMode}&" + "key=" + BuildConfig.DIRECTIONS_API_KEY
 
         Log.println(Log.INFO, "ZAPYTANIE1", urlRequest)
 
@@ -299,15 +279,13 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         val userRoutesRef = mDatabase.getReference("Users").child(uid!!).child("savedRoutes")
         var newRouteKey = userRoutesRef.push().key ?: return
         route.id = newRouteKey
-        userRoutesRef.child(newRouteKey).setValue(route)
-            .addOnSuccessListener {
+        userRoutesRef.child(newRouteKey).setValue(route).addOnSuccessListener {
                 Log.d("Firebase", "Trasa dodana do listy")
                 currentUser!!.savedRoutes = currentUser!!.savedRoutes?.plus(route)
                 currentSavedRoutes = currentSavedRoutes.plus(route)
                 Log.d("TRASKA", "Trasa dodana do listy lokalnie")
                 Toast.makeText(context, "Route saved successfully!", Toast.LENGTH_SHORT).show()
-            }
-            .addOnFailureListener { exception ->
+            }.addOnFailureListener { exception ->
                 Log.e("Firebase", "Error dodawania trasy: $exception")
                 Toast.makeText(context, "Erroe while saving route!", Toast.LENGTH_SHORT).show()
             }
@@ -315,8 +293,8 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
     }
 
     fun convertKeyToDigits(key: String): String {
-        val regex = Regex("[^0-9]") // Regular expression to match non-digit characters
-        return regex.replace(key, "") // Replace non-digit characters with an empty string
+        val regex = Regex("[^0-9]")
+        return regex.replace(key, "")
     }
 
     fun sendRequestSaveRoute(context: Context, travelMode: String, name: String) {
@@ -328,12 +306,8 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         val encodedWaypoints =
             waypointsList.joinToString("|") { it.address?.replace(" ", "%20").toString() }
 
-        val urlRequest = "https://maps.googleapis.com/maps/api/directions/json?" +
-                "origin=$encodedOrigin&" +
-                "destination=$encodedDestination&" +
-                "waypoints=optimize:true|$encodedWaypoints&" +
-                "mode=$travelMode&" +
-                "key=" + BuildConfig.DIRECTIONS_API_KEY
+        val urlRequest =
+            "https://maps.googleapis.com/maps/api/directions/json?" + "origin=$encodedOrigin&" + "destination=$encodedDestination&" + "waypoints=optimize:true|$encodedWaypoints&" + "mode=$travelMode&" + "key=" + BuildConfig.DIRECTIONS_API_KEY
 
         Log.println(Log.INFO, "ZAPYTANIE", urlRequest)
 
@@ -372,7 +346,9 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
                         "Trasa",
                         "Łączna odległość: $totalDistance metrów. Zapisana currentDlugosc: $currentSavingRouteLen"
                     )
-                    val savingRoute = Route(name, travelMode, currentSavingRouteLen, routePoints, shareUrl = url)
+                    val savingRoute = Route(
+                        name, travelMode, currentSavingRouteLen, routePoints, shareUrl = url
+                    )
                     saveRoute(getUser()?.userData?.uid, savingRoute, context)
                 }
 
@@ -382,6 +358,5 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         val requestQueue = Volley.newRequestQueue(context)
         requestQueue.add(directionsRequest)
     }
-
 
 }
