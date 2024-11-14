@@ -97,18 +97,17 @@ fun RegisterScreen(navController: NavController, viewModel: LocationViewModel) {
         )
         Button(
             colors = ButtonDefaults.buttonColors(Color(0xFF0D99FF)),
-            shape = RoundedCornerShape(10),
+            shape = RoundedCornerShape(50),
             modifier = Modifier
-                .size(width = 240.dp, height = 60.dp)
-                .offset(y = (-40).dp),
-            contentPadding = PaddingValues(bottom = 25.dp, top = 10.dp),
+                .height(80.dp)
+                .fillMaxWidth(0.6f)
+                .offset(y = (-20).dp),
+            contentPadding = PaddingValues(bottom = 40.dp, top = 10.dp),
             onClick = {}) {
             Text(
                 text = "Create Account",
                 style = TextStyle(color = Color.White),
                 fontSize = 24.sp,
-                //letterSpacing = 0.5.sp,
-                fontWeight = FontWeight(500),
             )
         }
         Card(
@@ -142,7 +141,8 @@ fun RegisterSection(navController: NavController, viewModel: LocationViewModel) 
     ) {
         OutlinedTextFieldBackground(Color.White) {
             OutlinedTextField(
-                modifier = Modifier.size(240.dp, 50.dp),
+                modifier = Modifier.height(50.dp)
+                    .fillMaxWidth(0.65f),
                 leadingIcon = {
                     Icon(
                         Icons.Filled.Person,
@@ -181,7 +181,8 @@ fun RegisterSection(navController: NavController, viewModel: LocationViewModel) 
 
         OutlinedTextFieldBackground(Color.White) {
             OutlinedTextField(
-                modifier = Modifier.size(240.dp, 50.dp),
+                modifier = Modifier.height(50.dp)
+                    .fillMaxWidth(0.65f),
                 leadingIcon = {
                     Icon(
                         Icons.Filled.Email,
@@ -220,7 +221,8 @@ fun RegisterSection(navController: NavController, viewModel: LocationViewModel) 
 
         OutlinedTextFieldBackground(Color.White) {
             OutlinedTextField(
-                modifier = Modifier.size(240.dp, 50.dp),
+                modifier = Modifier.height(50.dp)
+                    .fillMaxWidth(0.65f),
                 leadingIcon = {
                     Icon(
                         Icons.Filled.Lock,
@@ -260,7 +262,8 @@ fun RegisterSection(navController: NavController, viewModel: LocationViewModel) 
 
         OutlinedTextFieldBackground(Color.White) {
             OutlinedTextField(
-                modifier = Modifier.size(240.dp, 50.dp),
+                modifier = Modifier.height(50.dp)
+                    .fillMaxWidth(0.65f),
                 leadingIcon = {
                     Icon(
                         Icons.Filled.Lock,
@@ -327,10 +330,7 @@ fun RegisterSection(navController: NavController, viewModel: LocationViewModel) 
         ) {
             Text(
                 text = "Sign up",
-                fontSize = 14.sp,
-                letterSpacing = 1.sp,
                 color = Color.White,
-                fontWeight = FontWeight(500)
             )
         }
     }
