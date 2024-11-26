@@ -1,4 +1,5 @@
 import android.content.Context
+import android.content.res.Resources.Theme
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
@@ -6,6 +7,8 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +27,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -31,7 +36,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -48,6 +55,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -64,6 +72,7 @@ import com.TraSka.ScreenFlowHandler
 import com.TraSka.User
 import com.TraSka.UserData
 import com.TraSka.myCallback
+import com.TraSka.ui.theme.AppFont
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -83,8 +92,7 @@ fun LoginScreen(navController: NavController, viewModel: LocationViewModel) {
         contentScale = ContentScale.FillBounds
     )
     Column(
-        modifier = Modifier
-            .fillMaxHeight(),
+        modifier = Modifier.fillMaxHeight(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
@@ -96,19 +104,60 @@ fun LoginScreen(navController: NavController, viewModel: LocationViewModel) {
             painter = painterResource(R.drawable.traska),
             contentDescription = null,
         )
+        Button(
+            modifier = Modifier
+                .fillMaxWidth(0.25f)
+                .offset(y = (-50).dp),
+            onClick = {
+                navController.navigate(ScreenFlowHandler.StartScreen.route)
+            },
+            contentPadding = PaddingValues(10.dp),
+            shape = RoundedCornerShape(5.dp),
+            colors = ButtonDefaults.buttonColors(Color(0xFF222831))
+
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    "go back icon",
+                    modifier = Modifier.size(24.dp, 24.dp),
+                    tint = Color.White
+                )
+                Text(
+                    "Back",
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        letterSpacing = 1.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight(500)
+                    )
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(30.dp))
         Card(
             elevation = CardDefaults.cardElevation(5.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF222831)),
             modifier = Modifier
-                .padding(25.dp,0.dp,25.dp,25.dp)
-                .offset(y=(-35).dp)
+                .padding(25.dp, 0.dp, 25.dp, 25.dp)
+                .offset(y = (-50).dp)
         ) {
-            Spacer(modifier = Modifier.height(25.dp))
-            LoginSection(navController, viewModel)
-            Spacer(modifier = Modifier.height(15.dp))
-            GoogleSection(navController, viewModel)
-            RegisterSection(navController)
-            Spacer(modifier = Modifier.height(25.dp))
+            Column(modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                LoginSection(navController, viewModel)
+                Spacer(modifier = Modifier.height(15.dp))
+                GoogleSection(navController, viewModel)
+                Spacer(modifier = Modifier.height(15.dp))
+                RegisterSection(navController)
+            }
         }
     }
 }
@@ -122,79 +171,97 @@ fun LoginSection(navController: NavController, viewModel: LocationViewModel) {
     var error by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
+    var isLoading by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally
     ) {
         OutlinedTextFieldBackground(Color.White) {
-            OutlinedTextField(modifier = Modifier
-                .size(240.dp, 50.dp)
-                .padding(PaddingValues(0.dp)), leadingIcon = {
-                Icon(
-                    Icons.Filled.Person,
-                    "person icon",
-                    modifier = Modifier.size(22.dp, 22.dp),
-                    tint = Color(0xFF0D99FF)
-                )
-            }, value = email, onValueChange = { email = it; }, placeholder = {
-                Text(
-                    text = "E-mail",
-                    style = TextStyle(color = Color.Gray),
+            OutlinedTextField(
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .height(50.dp)
+                    .padding(PaddingValues(0.dp)),
+                leadingIcon = {
+                    Icon(
+                        Icons.Filled.Person,
+                        "person icon",
+                        modifier = Modifier.size(22.dp, 22.dp),
+                        tint = Color(0xFF0D99FF)
+                    )
+                },
+                value = email,
+                onValueChange = { email = it; },
+                placeholder = {
+                    Text(
+                        text = "E-mail",
+                        style = TextStyle(color = Color.Gray),
+                        fontSize = 13.sp,
+                        letterSpacing = 1.sp,
+                        fontWeight = FontWeight(500)
+                    )
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent
+                ),
+                singleLine = true,
+                textStyle = TextStyle(
                     fontSize = 13.sp,
                     letterSpacing = 1.sp,
-                    fontWeight = FontWeight(500)
+                    fontWeight = FontWeight(500),
+                    color = Color(0xFF222831),
+                    textDecoration = TextDecoration.None,
                 )
-            }, colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFF0D99FF),
-                unfocusedBorderColor = if (!error) Color.Transparent else Color.Red,
-            ), singleLine = true, textStyle = TextStyle(
-                fontSize = 13.sp,
-                letterSpacing = 1.sp,
-                fontWeight = FontWeight(500),
-                color = Color(0xFF222831),
-                textDecoration = TextDecoration.None,
-            )
             )
         }
 
         Spacer(Modifier.height(20.dp))
 
         OutlinedTextFieldBackground(Color.White) {
-            OutlinedTextField(modifier = Modifier.size(240.dp, 50.dp).padding(PaddingValues(0.dp)), leadingIcon = {
-                Icon(
-                    Icons.Filled.Lock,
-                    "password icon",
-                    modifier = Modifier.size(22.dp, 22.dp),
-                    tint = Color(0xFF0D99FF)
-                )
-            },
+            OutlinedTextField(
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .height(50.dp)
+                    .padding(PaddingValues(0.dp)),
+                leadingIcon = {
+                    Icon(
+                        Icons.Filled.Lock,
+                        "password icon",
+                        modifier = Modifier.size(22.dp, 22.dp),
+                        tint = Color(0xFF0D99FF)
+                    )
+                },
                 keyboardOptions = KeyboardOptions.Default.copy(
                     imeAction = ImeAction.Done
                 ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        login(navController, viewModel, context, email, password)
-                        focusManager.clearFocus()
-                    }
+                keyboardActions = KeyboardActions(onDone = {
+                    isLoading = true;
+                    login(navController, viewModel, context, email, password)
+                    focusManager.clearFocus()
+                }),
+                value = password,
+                onValueChange = { password = it },
+                placeholder = {
+                    Text(
+                        text = "Password",
+                        style = TextStyle(color = Color.Gray),
+                        fontSize = 13.sp,
+                        letterSpacing = 1.sp,
+                        fontWeight = FontWeight(500)
+                    )
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent
                 ),
-                value = password, onValueChange = { password = it }, placeholder = {
-                Text(
-                    text = "Password",
-                    style = TextStyle(color = Color.Gray),
-                    fontSize = 13.sp,
+                singleLine = true,
+                textStyle = TextStyle(
+                    fontSize = 17.sp,
                     letterSpacing = 1.sp,
-                    fontWeight = FontWeight(500)
-                )
-            }, colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF0D99FF),
-                    unfocusedBorderColor = if (!error) Color.Transparent else Color.Red,
-                ), singleLine = true, textStyle = TextStyle(
-                fontSize = 17.sp,
-                letterSpacing = 1.sp,
-                fontWeight = FontWeight(600),
-                color = Color(0xFF222831),
-                textDecoration = TextDecoration.None
-            ), visualTransformation = PasswordVisualTransformation()
+                    fontWeight = FontWeight(600),
+                    color = Color(0xFF222831),
+                    textDecoration = TextDecoration.None
+                ),
+                visualTransformation = PasswordVisualTransformation()
             )
         }
 
@@ -202,32 +269,42 @@ fun LoginSection(navController: NavController, viewModel: LocationViewModel) {
 
         Button(
             onClick = {
+                isLoading = true;
+                login(navController, viewModel, context, email, password)
                 focusManager.clearFocus()
-                error = login(navController, viewModel, context, email, password)
             },
             colors = ButtonDefaults.buttonColors(Color(0xFF0D99FF)),
             shape = RoundedCornerShape(10),
             modifier = Modifier.size(width = 150.dp, height = 40.dp),
         ) {
-            Text(
-                text = "Sign in",
-                fontSize = 14.sp,
-                letterSpacing = 1.sp,
-                color = Color.White,
-                fontWeight = FontWeight(500)
-            )
+            if (!isLoading) {
+                Text(
+                    text = "Sign in",
+                    fontSize = 16.sp,
+                    letterSpacing = 1.sp,
+                    color = Color.White,
+                    fontWeight = FontWeight(500)
+                )
+            }else {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    color = Color.White,
+                    strokeWidth = 3.dp
+                )
+            }
         }
     }
 }
 
 @Composable
 fun GoogleSection(navController: NavController, viewModel: LocationViewModel) {
-    Column (horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxWidth()) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()
+    ) {
         Or()
         Spacer(modifier = Modifier.height(15.dp))
         Image(
-            modifier = Modifier.width(150.dp),
+            modifier = Modifier.width(200.dp).clickable {},
             alignment = Alignment.Center,
             painter = painterResource(R.drawable.android_dark_sq_ctn),
             contentDescription = null,
@@ -240,32 +317,32 @@ fun RegisterSection(navController: NavController) {
     Column(
         modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
-        Spacer(modifier = Modifier.height(15.dp))
-
         Button(
             onClick = { navController.navigate(ScreenFlowHandler.RegisterScreen.route) },
             colors = ButtonDefaults.buttonColors(Color(0xFF131314)),
             shape = RoundedCornerShape(10),
-            modifier = Modifier.size(width = 150.dp, height = 30.dp),
-            contentPadding = PaddingValues(1.dp),
-            border = BorderStroke((0.5).dp,Color(0xFF8E918F))
+            modifier = Modifier.size(width = 189.dp, height = 40.dp),
+            contentPadding = PaddingValues(start = 9.dp),
+            border = BorderStroke((0.5).dp, Color(0xFF8E918F))
         ) {
-            Row(modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceAround) {
+            Row(
+                modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start
+            ) {
                 Icon(
                     Icons.Filled.Email,
                     "email icon",
-                    modifier = Modifier.size(16.dp, 16.dp),
+                    modifier = Modifier
+                        .size(20.dp, 20.dp)
+                        .offset(x = 2.dp),
                     tint = Color.White
                 )
-                Text(
-                    text = "Create Account",
-                    fontSize = 10.sp,
-                    fontStyle = FontStyle(R.font.roboto_medium),
-                    fontWeight = FontWeight(600),
-                    color = Color(0xFFE3E3E3)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "Continue with Email", fontSize = 13.sp, color = Color(0xFFE3E3E3)
+                    )
+                }
             }
         }
     }
@@ -274,8 +351,7 @@ fun RegisterSection(navController: NavController) {
 @Composable
 fun Or() {
     Row(
-        modifier = Modifier.width(150.dp),
-        verticalAlignment = Alignment.CenterVertically
+        modifier = Modifier.width(100.dp), verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
@@ -304,7 +380,7 @@ fun OutlinedTextFieldBackground(color: Color, content: @Composable () -> Unit) {
             modifier = Modifier
                 .matchParentSize()
                 .background(
-                    color, shape = RoundedCornerShape(4.dp)
+                    color, shape = RoundedCornerShape(50.dp)
                 )
         )
         content()
@@ -317,56 +393,55 @@ fun OutlinedTextFieldBackground(color: Color, content: @Composable () -> Unit) {
 fun readUserData(callback: FirebaseCallback, uid: String) {
     val mDatabase: FirebaseDatabase = FirebaseDatabase.getInstance()
     val dbRef = mDatabase.reference
-    dbRef.child("Users").child(uid)
-        .addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                val userData = dataSnapshot.child("userData").getValue(UserData::class.java)
-                var routesList = listOf<Route>()
-                for (route in dataSnapshot.child("savedRoutes").children) {
-                    routesList = routesList + (route.getValue(Route::class.java))!!
-                }
-
-                val user = User(userData,routesList)
-
-                if (user != null) {
-                    Log.d("TAG", user.userData!!.email.toString())
-                    Log.d("TAG", user.userData!!.login.toString())
-                }
-                callback.onResponse(user)
+    dbRef.child("Users").child(uid).addListenerForSingleValueEvent(object : ValueEventListener {
+        override fun onDataChange(dataSnapshot: DataSnapshot) {
+            val userData = dataSnapshot.child("userData").getValue(UserData::class.java)
+            var routesList = listOf<Route>()
+            for (route in dataSnapshot.child("savedRoutes").children) {
+                routesList = routesList + (route.getValue(Route::class.java))!!
             }
 
-            override fun onCancelled(databaseError: DatabaseError) {
-                Log.d("ERROR", "Error while reading data from db")
-            }
-        })
+            val user = User(userData, routesList)
+
+            callback.onResponse(user)
+        }
+
+        override fun onCancelled(databaseError: DatabaseError) {
+            Log.d("ERROR", "Error while reading data from db")
+        }
+    })
 }
 
-fun login(navController: NavController, viewModel: LocationViewModel, context: Context, email: String, password: String) : Boolean {
+fun login(
+    navController: NavController,
+    viewModel: LocationViewModel,
+    context: Context,
+    email: String,
+    password: String
+): Boolean {
     if (email.isNotBlank() && password.isNotBlank()) {
-        mAuth.signInWithEmailAndPassword(email, password)
-            .addOnSuccessListener {
-                val uid = it.user?.uid
-                if (uid != null) {
-                    readUserData(object : myCallback() {
-                        override fun onResponse(user: User?) {
-                            currentUser = user
-                            currentUser?.let { it1 -> viewModel.setUser(it1) }
-                            navController.navigate(ScreenFlowHandler.HomeScreen.route)
-                        }
-                    }, uid)
-                }
+        mAuth.signInWithEmailAndPassword(email, password).addOnSuccessListener {
+            val uid = it.user?.uid
+            if (uid != null) {
+                readUserData(object : myCallback() {
+                    override fun onResponse(user: User?) {
+                        currentUser = user
+                        currentUser?.let { it1 -> viewModel.setUser(it1) }
+                        navController.navigate(ScreenFlowHandler.HomeScreen.route)
+                    }
+                }, uid)
             }
-            .addOnFailureListener { _ ->
-                Toast.makeText(
-                    context,
-                    "Wrong e-mail or password",
-                    Toast.LENGTH_SHORT,
-                ).show()
-            }
-        return false
+        }.addOnFailureListener { _ ->
+            Toast.makeText(
+                context,
+                "Invalid e-mail or password",
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
+        return true
     } else {
         Toast.makeText(context, "E-mail and password can't be empty!", Toast.LENGTH_SHORT).show()
-        return true
+        return false
     }
 }
 //endregion

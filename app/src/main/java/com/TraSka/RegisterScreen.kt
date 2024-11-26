@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -29,6 +31,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -51,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -96,30 +100,54 @@ fun RegisterScreen(navController: NavController, viewModel: LocationViewModel) {
             contentDescription = null
         )
         Button(
-            colors = ButtonDefaults.buttonColors(Color(0xFF0D99FF)),
-            shape = RoundedCornerShape(50),
             modifier = Modifier
-                .height(80.dp)
-                .fillMaxWidth(0.6f)
-                .offset(y = (-20).dp),
-            contentPadding = PaddingValues(bottom = 40.dp, top = 10.dp),
-            onClick = {}) {
-            Text(
-                text = "Create Account",
-                style = TextStyle(color = Color.White),
-                fontSize = 24.sp,
-            )
+                .fillMaxWidth(0.25f)
+                .offset(y = (-50).dp),
+            onClick = {
+                navController.navigate(ScreenFlowHandler.LoginScreen.route)
+            },
+            contentPadding = PaddingValues(10.dp),
+            shape = RoundedCornerShape(5.dp),
+            colors = ButtonDefaults.buttonColors(Color(0xFF222831))
+
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    "go back icon",
+                    modifier = Modifier.size(24.dp, 24.dp),
+                    tint = Color.White
+                )
+                Text(
+                    "Back",
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        letterSpacing = 1.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight(500)
+                    )
+                )
+            }
         }
+        Spacer(modifier = Modifier.height(30.dp))
         Card(
             elevation = CardDefaults.cardElevation(5.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF222831)),
             modifier = Modifier
-                .padding(25.dp, 0.dp, 25.dp, 25.dp)
-                .offset(y = (-55).dp)
+                .padding(25.dp, 0.dp, 25.dp, 0.dp)
+                .offset(y = (-50).dp)
         ) {
-            Spacer(modifier = Modifier.height(25.dp))
-            RegisterSection(navController, viewModel)
-            Spacer(modifier = Modifier.height(25.dp))
+            Column(modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                RegisterSection(navController, viewModel)
+            }
         }
     }
 }
@@ -135,54 +163,94 @@ fun RegisterSection(navController: NavController, viewModel: LocationViewModel) 
     val focusManager = LocalFocusManager.current
     var error by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    var isLoading by remember { mutableStateOf(false) }
+
+    val isLengthValid = isLengthValid(password)
+    val hasUpperCase = hasUpperCase(password)
+    val hasLowerCase = hasLowerCase(password)
+    val hasDigit = hasDigit(password)
 
     Column(
         modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        OutlinedTextFieldBackground(Color.White) {
-            OutlinedTextField(
-                modifier = Modifier.height(50.dp)
-                    .fillMaxWidth(0.65f),
-                leadingIcon = {
-                    Icon(
-                        Icons.Filled.Person,
-                        "person icon username",
-                        modifier = Modifier.size(22.dp, 22.dp),
-                        tint = Color(0xFF0D99FF)
+        Column(modifier = Modifier.fillMaxWidth(0.75f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Password restrictions:",
+                    style = TextStyle(
+                        color = Color.White,
+                        fontWeight = FontWeight(600),
+                        fontSize = 16.sp
                     )
-                },
-                value = login,
-                onValueChange = { login = it },
-                placeholder = {
-                    Text(
-                        text = "Username",
-                        style = TextStyle(color = Color.Gray),
-                        fontSize = 13.sp,
-                        letterSpacing = 1.sp,
-                        fontWeight = FontWeight(500)
-                    )
-                },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.White,
-                    unfocusedBorderColor = if (!error) Color.Transparent else Color.Red,
-                ),
-                singleLine = true,
-                textStyle = TextStyle(
-                    fontSize = 13.sp,
-                    letterSpacing = 1.sp,
-                    fontWeight = FontWeight(500),
-                    color = Color(0xFF222831),
-                    textDecoration = TextDecoration.None,
                 )
-            )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("• min. 8 characters", style = TextStyle(color = Color.White))
+                if (isLengthValid) {
+                    Image(
+                        modifier = Modifier.size(15.dp, 15.dp),
+                        painter = painterResource(R.drawable.success),
+                        contentDescription = "success icon password",
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("• min. 1 uppercase character", style = TextStyle(color = Color.White))
+                if (hasUpperCase) {
+                    Image(
+                        modifier = Modifier.size(15.dp, 15.dp),
+                        painter = painterResource(R.drawable.success),
+                        contentDescription = "success icon password",
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("• min. 1 lowercase character", style = TextStyle(color = Color.White))
+                if (hasLowerCase) {
+                    Image(
+                        modifier = Modifier.size(15.dp, 15.dp),
+                        painter = painterResource(R.drawable.success),
+                        contentDescription = "success icon password",
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("• min. 1 number character", style = TextStyle(color = Color.White))
+                if (hasDigit) {
+                    Image(
+                        modifier = Modifier.size(15.dp, 15.dp),
+                        painter = painterResource(R.drawable.success),
+                        contentDescription = "success icon password",
+                    )
+                }
+            }
         }
 
         Spacer(Modifier.height(20.dp))
 
         OutlinedTextFieldBackground(Color.White) {
             OutlinedTextField(
-                modifier = Modifier.height(50.dp)
-                    .fillMaxWidth(0.65f),
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .height(50.dp)
+                    .padding(PaddingValues(0.dp)),
                 leadingIcon = {
                     Icon(
                         Icons.Filled.Email,
@@ -221,8 +289,10 @@ fun RegisterSection(navController: NavController, viewModel: LocationViewModel) 
 
         OutlinedTextFieldBackground(Color.White) {
             OutlinedTextField(
-                modifier = Modifier.height(50.dp)
-                    .fillMaxWidth(0.65f),
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .height(50.dp)
+                    .padding(PaddingValues(0.dp)),
                 leadingIcon = {
                     Icon(
                         Icons.Filled.Lock,
@@ -262,8 +332,10 @@ fun RegisterSection(navController: NavController, viewModel: LocationViewModel) 
 
         OutlinedTextFieldBackground(Color.White) {
             OutlinedTextField(
-                modifier = Modifier.height(50.dp)
-                    .fillMaxWidth(0.65f),
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .height(50.dp)
+                    .padding(PaddingValues(0.dp)),
                 leadingIcon = {
                     Icon(
                         Icons.Filled.Lock,
@@ -320,18 +392,30 @@ fun RegisterSection(navController: NavController, viewModel: LocationViewModel) 
 
         Button(
             onClick = {
+                isLoading = true
+                login = email.split('@')[0]
+                signUp(navController, viewModel, context, email, login, password, rePassword)
                 focusManager.clearFocus()
-                error =
-                    signUp(navController, viewModel, context, email, login, password, rePassword)
             },
             colors = ButtonDefaults.buttonColors(Color(0xFF0D99FF)),
             shape = RoundedCornerShape(10),
             modifier = Modifier.size(width = 150.dp, height = 40.dp),
         ) {
-            Text(
-                text = "Sign up",
-                color = Color.White,
-            )
+            if (!isLoading) {
+                Text(
+                    text = "Sign up",
+                    fontSize = 16.sp,
+                    letterSpacing = 1.sp,
+                    color = Color.White,
+                    fontWeight = FontWeight(500)
+                )
+            }else {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    color = Color.White,
+                    strokeWidth = 3.dp
+                )
+            }
         }
     }
 }
@@ -347,7 +431,7 @@ fun OutlinedTextFieldBackground(
                 .matchParentSize()
                 .background(
                     color,
-                    shape = RoundedCornerShape(4.dp)
+                    shape = RoundedCornerShape(50.dp)
                 )
         )
         content()
@@ -424,6 +508,11 @@ fun readUserData(callback: FirebaseCallback, uid: String) {
             }
         })
 }
+
+fun isLengthValid(password: String) = password.length >= 8
+fun hasUpperCase(password: String) = password.any { it.isUpperCase() }
+fun hasLowerCase(password: String) = password.any { it.isLowerCase() }
+fun hasDigit(password: String) = password.any { it.isDigit() }
 
 //endregion
 

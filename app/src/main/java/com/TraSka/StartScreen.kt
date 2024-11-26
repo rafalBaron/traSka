@@ -60,7 +60,7 @@ fun StartScreen(navController: NavController, viewModel: LocationViewModel) {
                 .height(50.dp)
                 .align(Alignment.CenterHorizontally),
             colors = ButtonDefaults.buttonColors(Color(0xFF222831)),
-            shape = RoundedCornerShape(10.dp, 10.dp, 10.dp, 10.dp)
+            shape = RoundedCornerShape(50.dp)
         ) {
             Text(
                 text = "Guest",
@@ -79,7 +79,7 @@ fun StartScreen(navController: NavController, viewModel: LocationViewModel) {
                 .height(50.dp)
                 .align(Alignment.CenterHorizontally),
             colors = ButtonDefaults.buttonColors(Color(0xFF139aff)),
-            shape = RoundedCornerShape(10.dp, 10.dp, 10.dp, 10.dp)
+            shape = RoundedCornerShape(50.dp)
         ) {
             Text(
                 text = "Account",
