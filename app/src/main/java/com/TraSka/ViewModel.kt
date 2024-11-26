@@ -14,6 +14,8 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.NavController
+import com.TraSka.auth.GoogleAuthManager
 import com.android.volley.Request
 import com.android.volley.Response
 import com.android.volley.toolbox.StringRequest
@@ -25,7 +27,13 @@ import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.api.net.FetchPlaceRequest
 import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest
+import com.google.firebase.auth.AuthCredential
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
@@ -54,6 +62,14 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         Places.initialize(applicationContext, BuildConfig.GOOGLE_MAPS_API_KEY)
     }
 
+    //region Values and variables
+
+    private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val databaseRef: DatabaseReference = FirebaseDatabase.getInstance().reference
+    private val mDatabase: FirebaseDatabase =
+        FirebaseDatabase.getInstance("https://traska-f9851-default-rtdb.europe-west1.firebasedatabase.app/")
+    private val googleAuthManager = GoogleAuthManager(applicationContext, firebaseAuth)
+
     private var currentUser: User? = null
     private val placesClient by lazy { Places.createClient(applicationContext) }
     lateinit var fusedLocationClient: FusedLocationProviderClient
@@ -67,7 +83,12 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
     var currentPointId by mutableStateOf(String())
     var currentSavingRouteLen = 0f
     var isLogged by mutableStateOf(false)
+    var isLoading by mutableStateOf(false)
     private var job: Job? = null
+
+    //endregion
+
+    //region User functions
 
     fun clearViewModel() {
         clearUser(null)
@@ -94,12 +115,12 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         }
 
         userRouteRef!!.removeValue().addOnSuccessListener {
-                currentUser!!.savedRoutes = currentUser!!.savedRoutes?.minus(route)
-                currentSavedRoutes = currentSavedRoutes.minus(route)
-                Toast.makeText(context, "Route deleted successfully!", Toast.LENGTH_SHORT).show()
-            }.addOnFailureListener { exception ->
-                Toast.makeText(context, "Error while deleting route!", Toast.LENGTH_SHORT).show()
-            }
+            currentUser!!.savedRoutes = currentUser!!.savedRoutes?.minus(route)
+            currentSavedRoutes = currentSavedRoutes.minus(route)
+            Toast.makeText(context, "Route deleted successfully!", Toast.LENGTH_SHORT).show()
+        }.addOnFailureListener { exception ->
+            Toast.makeText(context, "Error while deleting route!", Toast.LENGTH_SHORT).show()
+        }
     }
 
     fun setUser(user: User?) {
@@ -117,6 +138,129 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
     fun getUser(): User? {
         return currentUser
     }
+
+    fun readUserData(callback: FirebaseCallback, uid: String) {
+        val dbRef = databaseRef
+        dbRef.child("Users").child(uid).addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(dataSnapshot: DataSnapshot) {
+                val userData = dataSnapshot.child("userData").getValue(UserData::class.java)
+                var routesList = listOf<Route>()
+                for (route in dataSnapshot.child("savedRoutes").children) {
+                    routesList = routesList + (route.getValue(Route::class.java))!!
+                }
+
+                val user = User(userData, routesList)
+
+                callback.onResponse(user)
+            }
+
+            override fun onCancelled(databaseError: DatabaseError) {
+                Log.d("ERROR", "Error while reading data from db")
+            }
+        })
+    }
+
+    fun loginWithEmailAndPassword(
+        navController: NavController,
+        context: Context,
+        email: String,
+        password: String
+    ): Boolean {
+        if (email.isNotBlank() && password.isNotBlank()) {
+            firebaseAuth.signInWithEmailAndPassword(email, password).addOnSuccessListener {
+                val uid = it.user?.uid
+                if (uid != null) {
+                    readUserData(object : myCallback() {
+                        override fun onResponse(user: User?) {
+                            currentUser = user
+                            currentUser?.let { it1 -> setUser(it1) }
+                            navController.navigate(ScreenFlowHandler.HomeScreen.route)
+                        }
+                    }, uid)
+                }
+                isLoading = false;
+            }.addOnFailureListener { _ ->
+                isLoading = false;
+                Toast.makeText(
+                    context,
+                    "Invalid e-mail or password",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+            return true
+        } else {
+            isLoading = false;
+            Toast.makeText(context, "E-mail and password can't be empty!", Toast.LENGTH_SHORT)
+                .show()
+            return false
+        }
+    }
+
+    fun signUpWithEmailAndPassword(
+        navController: NavController,
+        context: Context,
+        email: String,
+        login: String,
+        password: String,
+        rePassword: String
+    ): Boolean {
+        if ((email.isNotBlank() && password.isNotBlank() && login.isNotBlank() && rePassword.isNotBlank()) && (password == rePassword)) {
+            firebaseAuth.createUserWithEmailAndPassword(email, password)
+                .addOnSuccessListener {
+                    val user = firebaseAuth.currentUser
+                    val userId = user?.uid ?: return@addOnSuccessListener
+                    val userData = UserData(login, email, userId)
+                    val userModel =
+                        User(userData)
+
+                    mDatabase.getReference("Users").child(userId).setValue(userModel)
+                        .addOnSuccessListener() {
+                            navController.navigate(ScreenFlowHandler.RegisterSuccessfulScreen.route)
+                            readUserData(object : myCallback() {
+                                override fun onResponse(user: User?) {
+                                    currentUser = user
+                                    currentUser?.let { it1 ->
+                                        setUser(
+                                            it1
+                                        )
+                                    }
+                                }
+                            }, userId)
+                            isLoading = false;
+                        }
+                        .addOnFailureListener() {
+                            isLoading = false;
+                            navController.navigate(ScreenFlowHandler.RegisterErrorScreen.route)
+                        }
+                }
+                .addOnFailureListener { _ ->
+                    isLoading = false;
+                    navController.navigate(ScreenFlowHandler.RegisterErrorScreen.route)
+                }
+            return false
+        } else {
+            isLoading = false;
+            Toast.makeText(
+                context,
+                "Fill all fields / password and re-password must be the same!!",
+                Toast.LENGTH_SHORT
+            ).show()
+            return true
+        }
+    }
+
+    fun signInWithGoogle(credential: AuthCredential) {
+        googleAuthManager.signInWithGoogleCredential(credential, { user ->
+            setUser(user)
+            isLogged = true
+        }, { error ->
+            // error
+        })
+    }
+
+    //endregion
+
+    //region Google Apis stuff
 
     fun searchPlaces(query: String) {
         job?.cancel()
@@ -280,15 +424,15 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         var newRouteKey = userRoutesRef.push().key ?: return
         route.id = newRouteKey
         userRoutesRef.child(newRouteKey).setValue(route).addOnSuccessListener {
-                Log.d("Firebase", "Trasa dodana do listy")
-                currentUser!!.savedRoutes = currentUser!!.savedRoutes?.plus(route)
-                currentSavedRoutes = currentSavedRoutes.plus(route)
-                Log.d("TRASKA", "Trasa dodana do listy lokalnie")
-                Toast.makeText(context, "Route saved successfully!", Toast.LENGTH_SHORT).show()
-            }.addOnFailureListener { exception ->
-                Log.e("Firebase", "Error dodawania trasy: $exception")
-                Toast.makeText(context, "Erroe while saving route!", Toast.LENGTH_SHORT).show()
-            }
+            Log.d("Firebase", "Trasa dodana do listy")
+            currentUser!!.savedRoutes = currentUser!!.savedRoutes?.plus(route)
+            currentSavedRoutes = currentSavedRoutes.plus(route)
+            Log.d("TRASKA", "Trasa dodana do listy lokalnie")
+            Toast.makeText(context, "Route saved successfully!", Toast.LENGTH_SHORT).show()
+        }.addOnFailureListener { exception ->
+            Log.e("Firebase", "Error dodawania trasy: $exception")
+            Toast.makeText(context, "Erroe while saving route!", Toast.LENGTH_SHORT).show()
+        }
 
     }
 
@@ -358,5 +502,7 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         val requestQueue = Volley.newRequestQueue(context)
         requestQueue.add(directionsRequest)
     }
+
+    //endregion
 
 }

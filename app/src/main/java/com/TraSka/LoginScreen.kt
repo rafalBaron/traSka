@@ -1,8 +1,11 @@
+import android.app.Activity
 import android.content.Context
 import android.content.res.Resources.Theme
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -43,6 +46,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,9 +76,13 @@ import com.TraSka.Route
 import com.TraSka.ScreenFlowHandler
 import com.TraSka.User
 import com.TraSka.UserData
+import com.TraSka.auth.GoogleAuthManager
 import com.TraSka.myCallback
 import com.TraSka.ui.theme.AppFont
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -171,7 +180,6 @@ fun LoginSection(navController: NavController, viewModel: LocationViewModel) {
     var error by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
-    var isLoading by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally
@@ -235,8 +243,8 @@ fun LoginSection(navController: NavController, viewModel: LocationViewModel) {
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions(onDone = {
-                    isLoading = true;
-                    login(navController, viewModel, context, email, password)
+                    viewModel.isLoading = true;
+                    viewModel.loginWithEmailAndPassword(navController, context, email, password)
                     focusManager.clearFocus()
                 }),
                 value = password,
@@ -269,15 +277,15 @@ fun LoginSection(navController: NavController, viewModel: LocationViewModel) {
 
         Button(
             onClick = {
-                isLoading = true;
-                login(navController, viewModel, context, email, password)
+                viewModel.isLoading = true;
+                viewModel.loginWithEmailAndPassword(navController, context, email, password)
                 focusManager.clearFocus()
             },
             colors = ButtonDefaults.buttonColors(Color(0xFF0D99FF)),
             shape = RoundedCornerShape(10),
             modifier = Modifier.size(width = 150.dp, height = 40.dp),
         ) {
-            if (!isLoading) {
+            if (!viewModel.isLoading) {
                 Text(
                     text = "Sign in",
                     fontSize = 16.sp,
@@ -298,13 +306,45 @@ fun LoginSection(navController: NavController, viewModel: LocationViewModel) {
 
 @Composable
 fun GoogleSection(navController: NavController, viewModel: LocationViewModel) {
+    val context = LocalContext.current
+    val activity = context as? Activity
+    val authManager = remember { GoogleAuthManager(context, mAuth) }
+
+    LaunchedEffect(Unit) {
+        authManager.initializeGoogleSignIn()
+    }
+
+    val activityResultLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                val credential = GoogleAuthProvider.getCredential(account.idToken, null)
+
+                viewModel.signInWithGoogle(credential)
+
+                navController.navigate(ScreenFlowHandler.HomeScreen.route)
+
+            } catch (e: ApiException) {
+                Log.e("GoogleSection", "Google sign-in failed", e)
+            }
+        }
+    }
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()
     ) {
         Or()
         Spacer(modifier = Modifier.height(15.dp))
         Image(
-            modifier = Modifier.width(200.dp).clickable {},
+            modifier = Modifier.width(200.dp).clickable(onClick = {
+                activity?.let {
+                    val signInIntent = authManager.googleSignInClient.signInIntent
+                    activityResultLauncher.launch(signInIntent)
+                }
+            }),
             alignment = Alignment.Center,
             painter = painterResource(R.drawable.android_dark_sq_ctn),
             contentDescription = null,
@@ -387,64 +427,6 @@ fun OutlinedTextFieldBackground(color: Color, content: @Composable () -> Unit) {
     }
 }
 
-//endregion
-
-//region Functions
-fun readUserData(callback: FirebaseCallback, uid: String) {
-    val mDatabase: FirebaseDatabase = FirebaseDatabase.getInstance()
-    val dbRef = mDatabase.reference
-    dbRef.child("Users").child(uid).addListenerForSingleValueEvent(object : ValueEventListener {
-        override fun onDataChange(dataSnapshot: DataSnapshot) {
-            val userData = dataSnapshot.child("userData").getValue(UserData::class.java)
-            var routesList = listOf<Route>()
-            for (route in dataSnapshot.child("savedRoutes").children) {
-                routesList = routesList + (route.getValue(Route::class.java))!!
-            }
-
-            val user = User(userData, routesList)
-
-            callback.onResponse(user)
-        }
-
-        override fun onCancelled(databaseError: DatabaseError) {
-            Log.d("ERROR", "Error while reading data from db")
-        }
-    })
-}
-
-fun login(
-    navController: NavController,
-    viewModel: LocationViewModel,
-    context: Context,
-    email: String,
-    password: String
-): Boolean {
-    if (email.isNotBlank() && password.isNotBlank()) {
-        mAuth.signInWithEmailAndPassword(email, password).addOnSuccessListener {
-            val uid = it.user?.uid
-            if (uid != null) {
-                readUserData(object : myCallback() {
-                    override fun onResponse(user: User?) {
-                        currentUser = user
-                        currentUser?.let { it1 -> viewModel.setUser(it1) }
-                        navController.navigate(ScreenFlowHandler.HomeScreen.route)
-                    }
-                }, uid)
-            }
-        }.addOnFailureListener { _ ->
-            Toast.makeText(
-                context,
-                "Invalid e-mail or password",
-                Toast.LENGTH_SHORT,
-            ).show()
-        }
-        return true
-    } else {
-        Toast.makeText(context, "E-mail and password can't be empty!", Toast.LENGTH_SHORT).show()
-        return false
-    }
-}
-//endregion
 
 
 
