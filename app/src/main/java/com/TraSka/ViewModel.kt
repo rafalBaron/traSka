@@ -76,7 +76,6 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
     lateinit var geoCoder: Geocoder
     var currentSavedRoutes by mutableStateOf(listOf<Route>())
     var routePoints by mutableStateOf(listOf<Point>())
-        private set
     var locationState by mutableStateOf<LocationState>(LocationState.NoPermission)
     val locationAutofill = mutableStateListOf<AutocompleteResult>()
     var currentLatLong by mutableStateOf(LatLng(51.9189046, 19.1343786))
@@ -322,7 +321,7 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         }
     }
 
-    fun sendRequestOpenMaps(context: Context, travelMode: String) {
+    fun sendRequestOpenMaps(context: Context, travelMode: String, avoid: String) {
         val origin = routePoints.first().address
         val destination = routePoints.last().address
         val waypointsList = routePoints.subList(1, routePoints.size - 1)
@@ -332,7 +331,7 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
             waypointsList.joinToString("|") { it.address?.replace(" ", "%20").toString() }
 
         val urlRequest =
-            "https://maps.googleapis.com/maps/api/directions/json?" + "origin=$encodedOrigin&" + "destination=$encodedDestination&" + "waypoints=optimize:true|$encodedWaypoints&" + "travelmode=$travelMode&" + "key=" + BuildConfig.DIRECTIONS_API_KEY
+            "https://maps.googleapis.com/maps/api/directions/json?avoid=$avoid&origin=$encodedOrigin&destination=$encodedDestination&waypoints=optimize:true|$encodedWaypoints&travelmode=$travelMode&key=" + BuildConfig.DIRECTIONS_API_KEY
 
         Log.println(Log.INFO, "ZAPYTANIE1", urlRequest)
 
@@ -351,7 +350,7 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
                 var separatedWaypoints = waypoints.joinToString("|")
 
                 val url =
-                    "https://www.google.com/maps/dir/?api=1&origin=$origin&destination=$destination&waypoints=$separatedWaypoints&travelmode=$travelMode"
+                    "https://www.google.com/maps/dir/?api=1&avoid=$avoid&origin=$origin&destination=$destination&waypoints=$separatedWaypoints&travelmode=$travelMode"
 
                 Log.println(Log.INFO, "ZAPYTANIE2", url)
 
@@ -383,7 +382,7 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         val encodedWaypoints = waypointsList.joinToString("|")
 
         val urlRequest =
-            "https://maps.googleapis.com/maps/api/directions/json?" + "origin=$encodedOrigin&" + "destination=$encodedDestination&" + "waypoints=optimize:true|$encodedWaypoints&" + "travelmode=${route.travelMode}&" + "key=" + BuildConfig.DIRECTIONS_API_KEY
+            "https://maps.googleapis.com/maps/api/directions/json?origin=$encodedOrigin&destination=$encodedDestination&waypoints=optimize:true|$encodedWaypoints&travelmode=${route.travelMode}&key=" + BuildConfig.DIRECTIONS_API_KEY
 
         Log.println(Log.INFO, "ZAPYTANIE1", urlRequest)
 
@@ -436,11 +435,6 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
 
     }
 
-    fun convertKeyToDigits(key: String): String {
-        val regex = Regex("[^0-9]")
-        return regex.replace(key, "")
-    }
-
     fun sendRequestSaveRoute(context: Context, travelMode: String, name: String) {
         val origin = routePoints.first().address
         val destination = routePoints.last().address
@@ -451,7 +445,7 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
             waypointsList.joinToString("|") { it.address?.replace(" ", "%20").toString() }
 
         val urlRequest =
-            "https://maps.googleapis.com/maps/api/directions/json?" + "origin=$encodedOrigin&" + "destination=$encodedDestination&" + "waypoints=optimize:true|$encodedWaypoints&" + "mode=$travelMode&" + "key=" + BuildConfig.DIRECTIONS_API_KEY
+            "https://maps.googleapis.com/maps/api/directions/json?origin=$encodedOrigin&destination=$encodedDestination&waypoints=optimize:true|$encodedWaypoints&mode=$travelMode&key=" + BuildConfig.DIRECTIONS_API_KEY
 
         Log.println(Log.INFO, "ZAPYTANIE", urlRequest)
 
