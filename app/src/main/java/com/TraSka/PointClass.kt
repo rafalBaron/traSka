@@ -6,5 +6,5 @@ data class Point(
     var address: String? = null,
     var id: String? = null,
     var latLng: List<Double>? = null,
-    var index: Int? = null
+    var lazyColumnId: String? = null,
 ) {}

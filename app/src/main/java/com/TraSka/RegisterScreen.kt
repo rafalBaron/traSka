@@ -1,9 +1,5 @@
 package com.TraSka.com.TraSka
 
-import android.content.Context
-import com.TraSka.User
-import android.util.Log
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -26,13 +22,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -54,26 +48,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.TraSka.FirebaseCallback
 import com.TraSka.LocationViewModel
 import com.TraSka.R
 import com.TraSka.ScreenFlowHandler
-import com.TraSka.UserData
-import com.TraSka.myCallback
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
 
-private val mAuth: FirebaseAuth = FirebaseAuth.getInstance()
-private val mDatabase: FirebaseDatabase =
-    FirebaseDatabase.getInstance("https://traska-f9851-default-rtdb.europe-west1.firebasedatabase.app/")
-private var currentUser: User? = null
 private var error: Boolean = false
 
 @Composable
@@ -141,9 +122,10 @@ fun RegisterScreen(navController: NavController, viewModel: LocationViewModel) {
                 .padding(25.dp, 0.dp, 25.dp, 0.dp)
                 .offset(y = (-50).dp)
         ) {
-            Column(modifier = Modifier
-                .fillMaxSize()
-                .padding(20.dp),
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp),
                 verticalArrangement = Arrangement.Center
             ) {
                 RegisterSection(navController, viewModel)
@@ -163,7 +145,6 @@ fun RegisterSection(navController: NavController, viewModel: LocationViewModel) 
     val focusManager = LocalFocusManager.current
     var error by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    var isLoading by remember { mutableStateOf(false) }
 
     val isLengthValid = isLengthValid(password)
     val hasUpperCase = hasUpperCase(password)
@@ -349,9 +330,8 @@ fun RegisterSection(navController: NavController, viewModel: LocationViewModel) 
                 ),
                 keyboardActions = KeyboardActions(
                     onDone = {
-                        signUp(
+                        viewModel.signUpWithEmailAndPassword(
                             navController,
-                            viewModel,
                             context,
                             email,
                             login,
@@ -392,16 +372,23 @@ fun RegisterSection(navController: NavController, viewModel: LocationViewModel) 
 
         Button(
             onClick = {
-                isLoading = true
+                viewModel.isLoading = true
                 login = email.split('@')[0]
-                signUp(navController, viewModel, context, email, login, password, rePassword)
+                viewModel.signUpWithEmailAndPassword(
+                    navController,
+                    context,
+                    email,
+                    login,
+                    password,
+                    rePassword
+                )
                 focusManager.clearFocus()
             },
             colors = ButtonDefaults.buttonColors(Color(0xFF0D99FF)),
             shape = RoundedCornerShape(10),
             modifier = Modifier.size(width = 150.dp, height = 40.dp),
         ) {
-            if (!isLoading) {
+            if (!viewModel.isLoading) {
                 Text(
                     text = "Sign up",
                     fontSize = 16.sp,
@@ -409,7 +396,7 @@ fun RegisterSection(navController: NavController, viewModel: LocationViewModel) 
                     color = Color.White,
                     fontWeight = FontWeight(500)
                 )
-            }else {
+            } else {
                 CircularProgressIndicator(
                     modifier = Modifier.size(22.dp),
                     color = Color.White,
@@ -441,73 +428,6 @@ fun OutlinedTextFieldBackground(
 //endregion
 
 // region Functions
-
-fun signUp(
-    navController: NavController,
-    viewModel: LocationViewModel,
-    context: Context,
-    email: String,
-    login: String,
-    password: String,
-    rePassword: String
-): Boolean {
-    if ((email.isNotBlank() && password.isNotBlank() && login.isNotBlank() && rePassword.isNotBlank()) && (password == rePassword)) {
-        error = false
-        mAuth.createUserWithEmailAndPassword(email, password)
-            .addOnSuccessListener {
-                val user = mAuth.currentUser
-                val userId = user?.uid ?: return@addOnSuccessListener
-                val userData = UserData(login, email, userId)
-                val userModel =
-                    User(userData)
-
-                mDatabase.getReference("Users").child(userId).setValue(userModel)
-                    .addOnSuccessListener() {
-                        navController.navigate(ScreenFlowHandler.RegisterSuccessfulScreen.route)
-                        readUserData(object : myCallback() {
-                            override fun onResponse(user: User?) {
-                                currentUser = user
-                                currentUser?.let { it1 -> viewModel.setUser(it1) }
-                            }
-                        }, userId)
-                    }
-                    .addOnFailureListener() {
-                        navController.navigate(ScreenFlowHandler.RegisterErrorScreen.route)
-                    }
-            }
-            .addOnFailureListener { _ ->
-                navController.navigate(ScreenFlowHandler.RegisterErrorScreen.route)
-            }
-        return false
-    } else {
-        Toast.makeText(
-            context,
-            "Fill all fields / password and re-password must be the same!!",
-            Toast.LENGTH_SHORT
-        ).show()
-        return true
-    }
-}
-
-fun readUserData(callback: FirebaseCallback, uid: String) {
-    val mDatabase: FirebaseDatabase = FirebaseDatabase.getInstance()
-    val dbRef = mDatabase.reference
-    dbRef.child("Users").child(uid)
-        .addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                val user = dataSnapshot.getValue(User::class.java)
-                if (user != null) {
-                    Log.d("TAG", user.userData!!.email.toString())
-                    Log.d("TAG", user.userData!!.login.toString())
-                }
-                callback.onResponse(user)
-            }
-
-            override fun onCancelled(databaseError: DatabaseError) {
-                Log.d("ERROR", "Error while reading data from db")
-            }
-        })
-}
 
 fun isLengthValid(password: String) = password.length >= 8
 fun hasUpperCase(password: String) = password.any { it.isUpperCase() }

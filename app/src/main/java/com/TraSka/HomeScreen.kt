@@ -1,5 +1,6 @@
 package com.TraSka.com.TraSka
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -53,6 +54,7 @@ import com.TraSka.ScreenFlowHandler
 import com.TraSka.User
 import java.util.Locale
 
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(navController: NavController, viewModel: LocationViewModel) {
@@ -60,27 +62,7 @@ fun HomeScreen(navController: NavController, viewModel: LocationViewModel) {
     val routes = remember { mutableStateOf(viewModel.currentSavedRoutes) }
     val openAlertDialog = remember { mutableStateOf(false) }
 
-    if (viewModel.isLogged) {
-        when {
-            openAlertDialog.value -> {
-               AlertDialogExample(
-                    onDismissRequest = {
-                        openAlertDialog.value = false
-                    },
-                    onConfirmation = {
-                        openAlertDialog.value = false
-                        viewModel
-                            .clearViewModel()
-                            .also {
-                                navController.navigate(ScreenFlowHandler.StartScreen.route)
-                            }
-                        println("Logout")
-                    },
-                    dialogTitle = "Do you want to log out?",
-                    icon = Icons.Default.AccountCircle
-                )
-            }
-        }
+    if (currentUser != null) {
         Column(
             modifier = Modifier
                 .fillMaxSize(),
@@ -105,7 +87,7 @@ fun HomeScreen(navController: NavController, viewModel: LocationViewModel) {
                         modifier = Modifier
                             .size(80.dp, 80.dp)
                             .clickable {
-                                openAlertDialog.value = true
+
                             },
                         painter = painterResource(R.drawable.acc),
                         contentDescription = null,
@@ -218,8 +200,12 @@ fun HomeScreen(navController: NavController, viewModel: LocationViewModel) {
                             Card(
                                 elevation = CardDefaults.cardElevation(3.dp),
                                 modifier = Modifier.padding(15.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFF272E38))
-                                ) {
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(
+                                        0xFF272E38
+                                    )
+                                )
+                            ) {
                                 Column(
                                     modifier = Modifier
                                         .fillMaxSize()
@@ -324,7 +310,8 @@ fun HomeScreen(navController: NavController, viewModel: LocationViewModel) {
                                         ) {
                                             routesSub[index].len?.let {
                                                 Text(
-                                                    text = (it / 1000).toInt().toString() + " km",
+                                                    text = (it / 1000).toInt()
+                                                        .toString() + " km",
                                                     color = Color.White,
                                                     fontSize = 20.sp,
                                                     fontWeight = FontWeight.Bold
@@ -339,7 +326,7 @@ fun HomeScreen(navController: NavController, viewModel: LocationViewModel) {
                                                             .padding(10.dp)
                                                             .clip(RoundedCornerShape(10.dp))
                                                             .background(Color.White),
-                                                        painter = painterResource(R.drawable.car),
+                                                        painter = painterResource(R.drawable.driving),
                                                         contentDescription = "driving mode"
                                                     )
                                                 } else {
@@ -349,7 +336,7 @@ fun HomeScreen(navController: NavController, viewModel: LocationViewModel) {
                                                             .padding(10.dp)
                                                             .clip(RoundedCornerShape(10.dp))
                                                             .background(Color.White),
-                                                        painter = painterResource(R.drawable.person),
+                                                        painter = painterResource(R.drawable.walking),
                                                         contentDescription = "walking mode"
                                                     )
                                                 }
@@ -393,102 +380,12 @@ fun HomeScreen(navController: NavController, viewModel: LocationViewModel) {
                         }
                     }
                 }
-                if (routes.value.isNotEmpty()) {
-                    Row(horizontalArrangement = Arrangement.SpaceBetween) {
-                        Button(
-                            onClick = { navController.navigate(ScreenFlowHandler.SavedRoutesScreen.route) },
-                            modifier = Modifier
-                                .height(110.dp)
-                                .fillMaxWidth()
-                                .padding(15.dp, 0.dp, 0.dp, 15.dp)
-                                .weight(1f),
-                            colors = ButtonDefaults.buttonColors(Color.Black),
-                            shape = RoundedCornerShape(10.dp, 10.dp, 10.dp, 10.dp)
-                        ) {
-                            Text(
-                                text = "Saved routes",
-                                color = Color.White,
-                                fontSize = 17.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(15.dp))
-                        Button(
-                            onClick = {
-                                navController.navigate(ScreenFlowHandler.RoutePlannerScreen.route)
-                            },
-                            modifier = Modifier
-                                .height(110.dp)
-                                .fillMaxWidth()
-                                .padding(0.dp, 0.dp, 15.dp, 15.dp)
-                                .weight(1f),
-                            colors = ButtonDefaults.buttonColors(Color(0xFF0D99FF)),
-                            shape = RoundedCornerShape(10.dp, 10.dp, 10.dp, 10.dp)
-                        ) {
-                            Text(
-                                text = "Plan another route",
-                                color = Color.White,
-                                fontSize = 17.sp,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-                }
             }
         }
     }
 }
 
+
 //region Composables
-
-@Composable
-fun AlertDialogExample(
-    onDismissRequest: () -> Unit,
-    onConfirmation: () -> Unit,
-    dialogTitle: String,
-    icon: ImageVector,
-) {
-    AlertDialog(
-        icon = {
-            Image(painter = painterResource(R.drawable.acc), contentDescription = "acc",
-                modifier = Modifier.size(80.dp,80.dp)
-                )
-
-        },
-        title = {
-            Text(text = dialogTitle)
-        },
-        onDismissRequest = {
-            onDismissRequest()
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onConfirmation()
-                },
-                colors = ButtonDefaults.buttonColors(Color.Black),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text("Log out",
-                    fontSize = 18.sp
-
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = {
-                    onDismissRequest()
-                },
-                colors = ButtonDefaults.buttonColors(Color.Black),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text("Go back",
-                fontSize = 18.sp)
-            }
-        }
-    )
-}
 
 //endregion

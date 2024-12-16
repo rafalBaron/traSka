@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -158,8 +157,8 @@ fun SavedRoutesScreen(
                                 modifier = Modifier
                                     .size(30.dp, 30.dp)
                                     .weight(1f),
-                                painter = if (route.travelMode == "driving") painterResource(R.drawable.car) else painterResource(
-                                    R.drawable.person
+                                painter = if (route.travelMode == "driving") painterResource(R.drawable.driving) else painterResource(
+                                    R.drawable.walking
                                 ),
                                 contentDescription = "driving mode"
                             )
