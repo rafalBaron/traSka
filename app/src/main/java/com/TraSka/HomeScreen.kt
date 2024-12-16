@@ -63,26 +63,6 @@ fun HomeScreen(navController: NavController, viewModel: LocationViewModel) {
     val openAlertDialog = remember { mutableStateOf(false) }
 
     if (currentUser != null) {
-        when {
-            openAlertDialog.value -> {
-                AlertDialogExample(
-                    onDismissRequest = {
-                        openAlertDialog.value = false
-                    },
-                    onConfirmation = {
-                        openAlertDialog.value = false
-                        viewModel
-                            .clearViewModel()
-                            .also {
-                                navController.navigate(ScreenFlowHandler.StartScreen.route)
-                            }
-                        println("Logout")
-                    },
-                    dialogTitle = "Do you want to log out?",
-                    icon = Icons.Default.AccountCircle
-                )
-            }
-        }
         Column(
             modifier = Modifier
                 .fillMaxSize(),
@@ -107,7 +87,7 @@ fun HomeScreen(navController: NavController, viewModel: LocationViewModel) {
                         modifier = Modifier
                             .size(80.dp, 80.dp)
                             .clickable {
-                                openAlertDialog.value = true
+
                             },
                         painter = painterResource(R.drawable.acc),
                         contentDescription = null,
@@ -407,58 +387,5 @@ fun HomeScreen(navController: NavController, viewModel: LocationViewModel) {
 
 
 //region Composables
-
-@Composable
-fun AlertDialogExample(
-    onDismissRequest: () -> Unit,
-    onConfirmation: () -> Unit,
-    dialogTitle: String,
-    icon: ImageVector,
-) {
-    AlertDialog(
-        icon = {
-            Image(
-                painter = painterResource(R.drawable.acc), contentDescription = "acc",
-                modifier = Modifier.size(80.dp, 80.dp)
-            )
-
-        },
-        title = {
-            Text(text = dialogTitle)
-        },
-        onDismissRequest = {
-            onDismissRequest()
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onConfirmation()
-                },
-                colors = ButtonDefaults.buttonColors(Color.Black),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text(
-                    "Log out",
-                    fontSize = 18.sp
-
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = {
-                    onDismissRequest()
-                },
-                colors = ButtonDefaults.buttonColors(Color.Black),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text(
-                    "Go back",
-                    fontSize = 18.sp
-                )
-            }
-        }
-    )
-}
 
 //endregion

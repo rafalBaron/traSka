@@ -7,13 +7,16 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,6 +29,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -34,6 +38,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.AlertDialog
@@ -61,12 +66,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusModifier
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -74,12 +84,18 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.navigation.NavController
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.AdvancedMarker
+import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @SuppressLint("StateFlowValueCalledInComposition", "UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -106,6 +122,16 @@ fun RoutePlannerScreen(
     var travelOptionParentSize by remember { mutableStateOf(IntSize.Zero) }
     var carSelectParentSize by remember { mutableStateOf(IntSize.Zero) }
     var avoid by remember { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
+    var isFocused by remember { mutableStateOf(false) }
+    var focusManager = LocalFocusManager.current
+
+    val lazyListState = rememberLazyListState()
+    val reorderableLazyListState = rememberReorderableLazyListState(lazyListState) { from, to ->
+        viewModel.routePoints = viewModel.routePoints.toMutableList().apply {
+            add(to.index, removeAt(from.index))
+        }
+    }
 
     when {
         notLoggedAlert.value -> {
@@ -156,9 +182,9 @@ fun RoutePlannerScreen(
                         Color(0xFF0D99FF)
                     )
                 ) {
-                    Row (
+                    Row(
                         horizontalArrangement = Arrangement.SpaceAround,
-                    ){
+                    ) {
                         Image(
                             modifier = Modifier.size(25.dp, 25.dp),
                             painter = painterResource(drawableIdMap[selectedOption]!!),
@@ -196,7 +222,7 @@ fun RoutePlannerScreen(
                     }
                 }
             }
-            Column(
+            /*Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
@@ -224,7 +250,7 @@ fun RoutePlannerScreen(
                     ),
                     enabled = !(selectedOption == "walking" || selectedOption == "bicycling")
                 )
-            }
+            }*/
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -280,9 +306,9 @@ fun RoutePlannerScreen(
                         disabledContentColor = Color.White,
 
                         ),
-                    enabled = !(selectedOption == "walking" || selectedOption == "bicycling")
+                    enabled = !(selectedOption == "walking" || selectedOption == "bicycling" || !viewModel.isLogged)
                 ) {
-                    Row (
+                    Row(
                         horizontalArrangement = Arrangement.SpaceAround,
                     ) {
                         Text(selectedCar)
@@ -332,7 +358,11 @@ fun RoutePlannerScreen(
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
                         .height(55.dp)
-                        .fillMaxWidth(0.85f),
+                        .fillMaxWidth(0.85f)
+                        .onFocusChanged { focusState ->
+                            isFocused = focusState.isFocused
+                        }
+                        .focusRequester(focusRequester),
                     maxLines = 1,
                     placeholder = { Text("Search for address", color = Color.LightGray) }
                 )
@@ -343,9 +373,11 @@ fun RoutePlannerScreen(
                     if (viewModel.text.isBlank()) {
                         Toast.makeText(context, "Input address!", Toast.LENGTH_SHORT).show()
                     } else if (viewModel.routePoints.size < 13) {
+                        focusManager.clearFocus()
                         var point = Point()
                         point.latLng = listOf(
-                            viewModel.currentLatLong.latitude, viewModel.currentLatLong.longitude
+                            viewModel.currentLatLong!!.latitude,
+                            viewModel.currentLatLong!!.longitude
                         )
                         point.address = viewModel.text
                         point.id = viewModel.currentPointId
@@ -375,7 +407,7 @@ fun RoutePlannerScreen(
         Box(
             modifier = Modifier.fillMaxWidth()
         ) {
-            if (viewModel.locationAutofill.size > 0) {
+            if (isFocused) {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth(0.85f)
@@ -389,33 +421,75 @@ fun RoutePlannerScreen(
                         modifier = Modifier.padding(10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                                .clip(shape = RoundedCornerShape(5.dp))
+                                .clickable {
+                                    viewModel.text = viewModel.userLocationText
+                                    viewModel.locationAutofill.clear()
+                                    viewModel.currentLatLong = viewModel.userLatLong
+                                    viewModel.currentPointId = viewModel.userPlaceId
+                                    focusManager.clearFocus()
+                                }, verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Image(
+                                modifier = Modifier.size(20.dp, 20.dp),
+                                painter = painterResource(R.drawable.mylocation),
+                                contentDescription = "my location"
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(viewModel.userLocationText)
+                        }
+                    }
+                }
+            }
+            if (viewModel.locationAutofill.size > 0) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth(0.85f)
+                        .padding(0.dp, 0.dp, 0.dp, 0.dp)
+                        .zIndex(2f)
+                        .offset(0.dp, (52).dp),
+                    color = Color.White,
+                    shape = RoundedCornerShape(0.dp, 0.dp, 5.dp, 5.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         AnimatedVisibility(
                             viewModel.locationAutofill.isNotEmpty(),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f)
                         ) {
                             LazyColumn(
                                 verticalArrangement = Arrangement.spacedBy(7.dp),
                             ) {
-                                items(viewModel.locationAutofill) {
+                                items(viewModel.locationAutofill) { item ->
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .height(50.dp)
+                                            .height(55.dp)
                                             .clip(shape = RoundedCornerShape(5.dp))
-                                            .background(Color(0xFFA7D8FC))
+                                            .background(
+                                                Color(0xFFA7D8FC)
+                                            )
                                             .clickable {
-                                                viewModel.text = it.address
+                                                viewModel.text = item.address
                                                 viewModel.locationAutofill.clear()
-                                                viewModel.getCoordinates(it)
+                                                viewModel.getCoordinates(item)
+                                                focusManager.clearFocus()
                                             }, verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Spacer(modifier = Modifier.width(10.dp))
                                         Icon(
                                             Icons.Filled.Place,
-                                            contentDescription = "IconLocation"
+                                            contentDescription = "Place"
                                         )
                                         Spacer(modifier = Modifier.width(10.dp))
-                                        Text(it.address)
+                                        Text(item.address)
                                     }
                                 }
                             }
@@ -433,85 +507,118 @@ fun RoutePlannerScreen(
             ) {
                 Spacer(modifier = Modifier.height(10.dp))
                 LazyColumn(
+                    state = lazyListState,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(shape = RoundedCornerShape(5.dp))
+                        .clip(shape = RoundedCornerShape(5.dp,))
                         .heightIn(min = 0.dp, max = 175.dp)
                         .background(Color(0xFF455163))
                         .padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
-                    itemsIndexed(viewModel.routePoints) { index, point ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(45.dp)
-                                .clip(shape = RoundedCornerShape(5.dp))
-                                .background(Color.White),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            if (index == 0) {
-                                Button(
-                                    onClick = {},
+                    itemsIndexed(
+                        viewModel.routePoints,
+                        key = { _, item -> item.lazyColumnId!! }) { index, point ->
+                        point.lazyColumnId?.let {
+                            ReorderableItem(
+                                reorderableLazyListState,
+                                key = point.lazyColumnId!!
+                            ) { isDragging ->
+                                Row(
                                     modifier = Modifier
-                                        .clip(shape = RoundedCornerShape(10.dp))
-                                        .size(40.dp, 30.dp)
-                                        .padding(10.dp, 0.dp, 10.dp, 0.dp),
-                                    contentPadding = PaddingValues(0.dp),
-                                    colors = ButtonDefaults.buttonColors(Color.White)
-                                ) {
-                                    Image(
-                                        imageVector = Icons.Filled.Home, contentDescription = "Home"
-                                    )
-                                }
-                            } else if (index == viewModel.routePoints.size - 1) {
-                                Button(
-                                    onClick = {},
-                                    modifier = Modifier
-                                        .clip(shape = RoundedCornerShape(10.dp))
-                                        .size(40.dp, 30.dp)
-                                        .padding(10.dp, 0.dp, 10.dp, 0.dp),
-                                    contentPadding = PaddingValues(0.dp),
-                                    colors = ButtonDefaults.buttonColors(Color.White)
-                                ) {
-                                    Image(
-                                        imageVector = Icons.Filled.Place,
-                                        contentDescription = "Place"
-                                    )
-                                }
-                            } else {
-                                Button(
-                                    onClick = {},
-                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(45.dp)
                                         .clip(shape = RoundedCornerShape(5.dp))
-                                        .size(40.dp, 30.dp)
-                                        .padding(10.dp, 0.dp, 10.dp, 0.dp),
-                                    contentPadding = PaddingValues(0.dp),
-                                    colors = ButtonDefaults.buttonColors(Color.White)
-                                ) {}
-                            }
-                            Text(
-                                point.address.toString(),
-                                modifier = Modifier
-                                    .fillMaxWidth(0.9f)
-                                    .wrapContentHeight(align = Alignment.CenterVertically),
-                                maxLines = 1
-                            )
-                            Button(
-                                onClick = {
-                                    viewModel.delPoint(point)
-                                },
-                                modifier = Modifier
-                                    .clip(shape = RoundedCornerShape(5.dp))
-                                    .size(40.dp, 40.dp)
-                                    .padding(0.dp, 0.dp, 0.dp, 0.dp),
-                                contentPadding = PaddingValues(0.dp),
-                                colors = ButtonDefaults.buttonColors(Color.White)
-                            ) {
-                                Image(
-                                    imageVector = Icons.Filled.Clear,
-                                    contentDescription = "Delete",
-                                )
+                                        .background(Color.White)
+                                        .then(
+                                            if (isDragging) {
+                                                Modifier.border(2.dp, Color(0xFF0D99FF))
+                                            } else {
+                                                Modifier
+                                            }
+                                        ),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    if (index == 0) {
+                                        Button(
+                                            onClick = {},
+                                            modifier = Modifier
+                                                .clip(shape = RoundedCornerShape(10.dp))
+                                                .size(40.dp, 30.dp)
+                                                .padding(10.dp, 0.dp, 10.dp, 0.dp),
+                                            contentPadding = PaddingValues(0.dp),
+                                            colors = ButtonDefaults.buttonColors(Color.White)
+                                        ) {
+                                            Image(
+                                                imageVector = Icons.Filled.Home,
+                                                contentDescription = "Home"
+                                            )
+                                        }
+                                    } else if (index == viewModel.routePoints.size - 1) {
+                                        Button(
+                                            onClick = {},
+                                            modifier = Modifier
+                                                .clip(shape = RoundedCornerShape(10.dp))
+                                                .size(40.dp, 30.dp)
+                                                .padding(10.dp, 0.dp, 10.dp, 0.dp),
+                                            contentPadding = PaddingValues(0.dp),
+                                            colors = ButtonDefaults.buttonColors(Color.White)
+                                        ) {
+                                            Image(
+                                                imageVector = Icons.Filled.Place,
+                                                contentDescription = "Place"
+                                            )
+                                        }
+                                    } else {
+                                        Button(
+                                            onClick = {},
+                                            modifier = Modifier
+                                                .clip(shape = RoundedCornerShape(5.dp))
+                                                .size(40.dp, 30.dp)
+                                                .padding(10.dp, 0.dp, 10.dp, 0.dp),
+                                            contentPadding = PaddingValues(0.dp),
+                                            colors = ButtonDefaults.buttonColors(Color.White)
+                                        ) {}
+                                    }
+                                    Text(
+                                        point.address.toString(),
+                                        modifier = Modifier
+                                            .fillMaxWidth(0.75f)
+                                            .wrapContentHeight(align = Alignment.CenterVertically),
+                                        maxLines = 1
+                                    )
+                                    Button(
+                                        onClick = {
+                                            viewModel.delPoint(point)
+                                        },
+                                        modifier = Modifier
+                                            .clip(shape = RoundedCornerShape(5.dp))
+                                            .size(40.dp, 40.dp)
+                                            .padding(0.dp, 0.dp, 0.dp, 0.dp),
+                                        contentPadding = PaddingValues(0.dp),
+                                        colors = ButtonDefaults.buttonColors(Color.White)
+                                    ) {
+                                        Image(
+                                            imageVector = Icons.Filled.Clear,
+                                            contentDescription = "Delete",
+                                        )
+                                    }
+                                    Button(
+                                        onClick = {},
+                                        modifier = Modifier
+                                            .draggableHandle()
+                                            .clip(shape = RoundedCornerShape(5.dp))
+                                            .size(40.dp, 40.dp)
+                                            .padding(0.dp, 0.dp, 10.dp, 0.dp),
+                                        contentPadding = PaddingValues(0.dp),
+                                        colors = ButtonDefaults.buttonColors(Color.White)
+                                    ) {
+                                        Image(
+                                            imageVector = Icons.Filled.Menu,
+                                            contentDescription = "Drag",
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -531,7 +638,7 @@ fun RoutePlannerScreen(
                                 } else {
                                     Toast.makeText(
                                         context,
-                                        "Choose at least 2 pointes!",
+                                        "Choose at least 2 points!",
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
@@ -580,7 +687,7 @@ fun RoutePlannerScreen(
                 }*/
 
                 var cameraPositionState = rememberCameraPositionState {
-                    position = CameraPosition.fromLatLngZoom(viewModel.currentLatLong, 2f)
+                    position = CameraPosition.fromLatLngZoom(viewModel.userLatLong!!, 15f)
                 }
                 GoogleMap(
                     modifier = Modifier
@@ -600,14 +707,34 @@ fun RoutePlannerScreen(
                         cameraPositionState.position = CameraPosition.fromLatLngZoom(
                             LatLng(
                                 point.latLng!![0], point.latLng!![1]
-                            ), 10f
+                            ), 15f
                         )
                     }
+                    MarkerState(
+                        position = LatLng(
+                            viewModel.userLatLong!!.latitude,
+                            viewModel.userLatLong!!.longitude
+                        )
+                    )
+                    Marker(
+                        state = MarkerState(position = viewModel.userLatLong!!),
+                        title = "Your Location",
+                        snippet = "You are here",
+                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
+                    )
+                    Circle(
+                        center = viewModel.userLatLong!!,
+                        radius = 100.0,
+                        strokeColor = Color(0x330000FF),
+                        fillColor = Color(0x330000FF),
+                        strokeWidth = 2f
+                    )
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 Button(
                     onClick = {
-                        avoid = if (highwaysChecked && tollsChecked) "highways|tolls" else if (highwaysChecked) "highways" else if (tollsChecked) "tolls" else ""
+                        avoid =
+                            if (highwaysChecked && tollsChecked) "highways|tolls" else if (highwaysChecked) "highways" else if (tollsChecked) "tolls" else ""
                         if (viewModel.routePoints.size > 1) {
                             viewModel.sendRequestOpenMaps(context = context, selectedOption, avoid)
                         } else {

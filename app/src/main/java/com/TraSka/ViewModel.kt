@@ -1,17 +1,26 @@
 package com.TraSka
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.location.Geocoder
+import android.location.Location
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.datastore.core.DataStore
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
@@ -27,8 +36,10 @@ import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.api.net.FetchPlaceRequest
 import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest
+import com.google.android.libraries.places.api.net.FindCurrentPlaceRequest
 import com.google.firebase.auth.AuthCredential
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
@@ -36,9 +47,16 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.net.URL
+import java.util.prefs.Preferences
 import javax.inject.Inject
 
 sealed class LocationState {
@@ -58,8 +76,11 @@ data class AutocompleteResult(
 class LocationViewModel @Inject constructor(@ApplicationContext applicationContext: Context) :
     ViewModel() {
 
+    lateinit var geoCoder: Geocoder
+
     init {
         Places.initialize(applicationContext, BuildConfig.GOOGLE_MAPS_API_KEY)
+        geoCoder = Geocoder(applicationContext)
     }
 
     //region Values and variables
@@ -70,19 +91,26 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         FirebaseDatabase.getInstance("https://traska-f9851-default-rtdb.europe-west1.firebasedatabase.app/")
     private val googleAuthManager = GoogleAuthManager(applicationContext, firebaseAuth)
 
-    private var currentUser: User? = null
+    //private var currentUser: User? = null
+    private val _currentUser = MutableStateFlow<User?>(null)
+    val currentUser: StateFlow<User?> = _currentUser
+
     private val placesClient by lazy { Places.createClient(applicationContext) }
-    lateinit var fusedLocationClient: FusedLocationProviderClient
-    lateinit var geoCoder: Geocoder
+
     var currentSavedRoutes by mutableStateOf(listOf<Route>())
     var routePoints by mutableStateOf(listOf<Point>())
     var locationState by mutableStateOf<LocationState>(LocationState.NoPermission)
     val locationAutofill = mutableStateListOf<AutocompleteResult>()
-    var currentLatLong by mutableStateOf(LatLng(51.9189046, 19.1343786))
+    var currentLatLong by mutableStateOf<LatLng?>(null)
+    var userLatLong by mutableStateOf<LatLng?>(null)
+    var userLocationText by mutableStateOf("")
+    var userPlaceId by mutableStateOf("")
     var currentPointId by mutableStateOf(String())
     var currentSavingRouteLen = 0f
     var isLogged by mutableStateOf(false)
     var isLoading by mutableStateOf(false)
+    private val _isLoggingLoading = MutableLiveData(true)
+    val isLoggingLoading: LiveData<Boolean> = _isLoggingLoading
     private var job: Job? = null
 
     //endregion
@@ -93,28 +121,36 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         clearUser(null)
         routePoints = emptyList()
         currentSavingRouteLen = 0f
+        currentPointId = ""
+        isLoading = false
     }
 
     fun addPoint(pointClass: Point) {
-        routePoints = routePoints + pointClass
+        var id = ""
+        while (!(routePoints.any { it.lazyColumnId == pointClass.lazyColumnId })) {
+            id = generatePointId()
+            pointClass.lazyColumnId = id
+            routePoints = routePoints + pointClass
+        }
     }
 
     fun delPoint(pointClass: Point) {
         routePoints = routePoints - pointClass
+        userLatLong = userLatLong
     }
 
     fun delRoute(route: Route, context: Context) {
         val mDatabase: FirebaseDatabase =
             FirebaseDatabase.getInstance("https://traska-f9851-default-rtdb.europe-west1.firebasedatabase.app/")
         val userRouteRef = route.id?.let {
-            mDatabase.getReference("Users").child(currentUser!!.userData!!.uid!!)
+            mDatabase.getReference("Users").child(currentUser.value!!.userData!!.uid!!)
                 .child("savedRoutes").child(
                     it
                 )
         }
 
         userRouteRef!!.removeValue().addOnSuccessListener {
-            currentUser!!.savedRoutes = currentUser!!.savedRoutes?.minus(route)
+            currentUser.value!!.savedRoutes = currentUser.value!!.savedRoutes?.minus(route)
             currentSavedRoutes = currentSavedRoutes.minus(route)
             Toast.makeText(context, "Route deleted successfully!", Toast.LENGTH_SHORT).show()
         }.addOnFailureListener { exception ->
@@ -123,19 +159,120 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
     }
 
     fun setUser(user: User?) {
-        currentUser = user
+        _currentUser.value = user
         isLogged = user != null
         currentSavedRoutes = user!!.savedRoutes!!
     }
 
     fun clearUser(user: User?) {
-        currentUser = user
+        _currentUser.value = user
         isLogged = user != null
         currentSavedRoutes = emptyList()
     }
 
     fun getUser(): User? {
-        return currentUser
+        return currentUser.value
+    }
+
+    fun saveVehicle(uid: String?, vehicle: Vehicle, context: Context) {
+        val mDatabase: FirebaseDatabase =
+            FirebaseDatabase.getInstance("https://traska-f9851-default-rtdb.europe-west1.firebasedatabase.app/")
+        val userVehiclesRef = mDatabase.getReference("Users").child(uid!!).child("savedVehicles")
+        var newVehicleKey = userVehiclesRef.push().key ?: return
+        vehicle.id = newVehicleKey
+        userVehiclesRef.child(newVehicleKey).setValue(vehicle).addOnSuccessListener {
+            Log.d("Firebase", "Pojazd dodany do listy")
+            currentUser.value!!.savedVehicles.value = currentUser.value!!.savedVehicles.value.plus(vehicle)
+            Log.d("TRASKA", "Pojazd dodany do listy lokalnie")
+            Toast.makeText(context, "Vehicle saved successfully!", Toast.LENGTH_SHORT).show()
+        }.addOnFailureListener { exception ->
+            Log.e("Firebase", "Error dodawania pojazdu: $exception")
+            Toast.makeText(context, "Erroe while saving vehicle!", Toast.LENGTH_SHORT).show()
+        }
+
+    }
+
+    fun delVehicle(vehicle: Vehicle, context: Context) {
+        val mDatabase: FirebaseDatabase =
+            FirebaseDatabase.getInstance("https://traska-f9851-default-rtdb.europe-west1.firebasedatabase.app/")
+        val userVehicleRef = vehicle.id?.let {
+            mDatabase.getReference("Users").child(currentUser.value!!.userData!!.uid!!)
+                .child("savedVehicles").child(
+                    it
+                )
+        }
+
+        userVehicleRef!!.removeValue().addOnSuccessListener {
+            currentUser.value!!.savedVehicles.value = currentUser.value!!.savedVehicles.value.minus(vehicle)
+            Toast.makeText(context, "Vehicle deleted successfully!", Toast.LENGTH_SHORT).show()
+        }.addOnFailureListener { exception ->
+            Toast.makeText(context, "Error while deleting Vehicle!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun checkSetCurrentLoggedUser() {
+        _isLoggingLoading.value = true
+
+        val user = FirebaseAuth.getInstance().currentUser
+        val uid = user?.uid
+
+        if (uid != null) {
+            readUserData(object : myCallback() {
+                override fun onResponse(user: User?) {
+                    setUser(user)
+                    isLogged = user != null
+                    _isLoggingLoading.value = false
+                }
+            }, uid)
+        } else {
+            isLogged = false
+            _isLoggingLoading.value = false
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun fetchUserLocationId() {
+        userLatLong?.let { latLng ->
+            val placeFields = listOf(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS)
+            val request = FindCurrentPlaceRequest.builder(placeFields).build()
+
+            placesClient.findCurrentPlace(request)
+                .addOnSuccessListener { response ->
+                    val currentPlace = response.placeLikelihoods.firstOrNull()?.place
+                    if (currentPlace != null) {
+                        userLocationText = currentPlace.address ?: "Unknown Location"
+                        userPlaceId = currentPlace.id ?: "Unknown Place ID"
+                    }
+                    Log.i("Location", userLocationText)
+                    Log.i("ID", userPlaceId)
+                }
+                .addOnFailureListener {
+                    it.printStackTrace()
+                    println(it.cause)
+                    println(it.message)
+                    Log.i("Location", "Failed to fetch user location > " + it.message + it.cause)
+                }
+        }
+    }
+
+    fun updateUsernameInFirebase(userId: String, newUsername: String, context: Context, onSuccess: () -> Unit, onFailure: (Exception) -> Unit) {
+        val databaseReference = FirebaseDatabase.getInstance().getReference("Users").child(userId).child("userData")
+
+        val updates = mapOf<String, Any>(
+            "login" to newUsername
+        )
+
+        databaseReference.updateChildren(updates)
+            .addOnSuccessListener {
+                onSuccess()
+                val updatedUser = _currentUser.value?.copy(userData = _currentUser.value?.userData?.copy(login = newUsername))
+                _currentUser.value = updatedUser
+                Toast.makeText(context, "Username change successful!", Toast.LENGTH_SHORT).show()
+            }
+            .addOnFailureListener { exception ->
+                onFailure(exception)
+                Toast.makeText(context, "There was an error updating the username.", Toast.LENGTH_SHORT).show()
+            }
     }
 
     fun readUserData(callback: FirebaseCallback, uid: String) {
@@ -147,8 +284,12 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
                 for (route in dataSnapshot.child("savedRoutes").children) {
                     routesList = routesList + (route.getValue(Route::class.java))!!
                 }
+                var vehiclesList = listOf<Vehicle>()
+                for (vehicle in dataSnapshot.child("savedVehicles").children) {
+                    vehiclesList = vehiclesList + (vehicle.getValue(Vehicle::class.java))!!
+                }
 
-                val user = User(userData, routesList)
+                val user = User(userData, routesList, mutableStateOf(vehiclesList))
 
                 callback.onResponse(user)
             }
@@ -171,8 +312,8 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
                 if (uid != null) {
                     readUserData(object : myCallback() {
                         override fun onResponse(user: User?) {
-                            currentUser = user
-                            currentUser?.let { it1 -> setUser(it1) }
+                            _currentUser.value = user
+                            setUser(currentUser.value)
                             navController.navigate(ScreenFlowHandler.HomeScreen.route)
                         }
                     }, uid)
@@ -217,12 +358,10 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
                             navController.navigate(ScreenFlowHandler.RegisterSuccessfulScreen.route)
                             readUserData(object : myCallback() {
                                 override fun onResponse(user: User?) {
-                                    currentUser = user
-                                    currentUser?.let { it1 ->
-                                        setUser(
-                                            it1
-                                        )
-                                    }
+                                    _currentUser.value = user
+                                    setUser(
+                                        user
+                                    )
                                 }
                             }, userId)
                             isLoading = false;
@@ -264,6 +403,7 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
     fun searchPlaces(query: String) {
         job?.cancel()
         locationAutofill.clear()
+
         job = viewModelScope.launch {
             val request = FindAutocompletePredictionsRequest.builder().setQuery(query).build()
             placesClient.findAutocompletePredictions(request).addOnSuccessListener { response ->
@@ -293,32 +433,24 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         }
     }
 
-    @SuppressLint("MissingPermission")
-    fun getCurrentLocation() {
-        locationState = LocationState.LocationLoading
-        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
-            .addOnSuccessListener { location ->
-                locationState =
-                    if (location == null && locationState !is LocationState.LocationAvailable) {
-                        LocationState.Error
-                    } else {
-                        currentLatLong = LatLng(location.latitude, location.longitude)
-                        LocationState.LocationAvailable(
-                            LatLng(
-                                location.latitude, location.longitude
-                            )
-                        )
-                    }
-            }
+    fun generatePointId(): String {
+        val allowedChars = ('A'..'Z') + ('a'..'z') + ('0'..'9')
+        return (1..10)
+            .map { allowedChars.random() }
+            .joinToString("")
     }
 
     var text by mutableStateOf("")
 
-    fun getAddress(latLng: LatLng) {
+    fun getAddress(latLng: LatLng) : String {
+        var address = ""
         viewModelScope.launch {
-            val address = geoCoder.getFromLocation(latLng.latitude, latLng.longitude, 1)
-            text = address?.get(0)?.getAddressLine(0).toString()
+            address =
+                currentLatLong?.let { geoCoder.getFromLocation(it.latitude, it.longitude, 1)?.get(0)
+                    ?.getAddressLine(0) }
+                    .toString()
         }
+        return address
     }
 
     fun sendRequestOpenMaps(context: Context, travelMode: String, avoid: String) {
@@ -424,7 +556,7 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         route.id = newRouteKey
         userRoutesRef.child(newRouteKey).setValue(route).addOnSuccessListener {
             Log.d("Firebase", "Trasa dodana do listy")
-            currentUser!!.savedRoutes = currentUser!!.savedRoutes?.plus(route)
+            currentUser.value!!.savedRoutes = currentUser.value!!.savedRoutes?.plus(route)
             currentSavedRoutes = currentSavedRoutes.plus(route)
             Log.d("TRASKA", "Trasa dodana do listy lokalnie")
             Toast.makeText(context, "Route saved successfully!", Toast.LENGTH_SHORT).show()
