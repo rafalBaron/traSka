@@ -252,8 +252,8 @@ fun RegisterSection(navController: NavController, viewModel: LocationViewModel) 
                     )
                 },
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.White,
-                    unfocusedBorderColor = if (!error) Color.Transparent else Color.Red,
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
                 ),
                 singleLine = true,
                 textStyle = TextStyle(
@@ -294,8 +294,8 @@ fun RegisterSection(navController: NavController, viewModel: LocationViewModel) 
                     )
                 },
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.White,
-                    unfocusedBorderColor = if (!error) Color.Transparent else Color.Red,
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
                 ),
                 singleLine = true,
                 textStyle = TextStyle(
@@ -353,8 +353,8 @@ fun RegisterSection(navController: NavController, viewModel: LocationViewModel) 
                     )
                 },
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF0D99FF),
-                    unfocusedBorderColor = if (!error) Color.Transparent else Color.Red,
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
                 ),
                 singleLine = true,
                 textStyle = TextStyle(

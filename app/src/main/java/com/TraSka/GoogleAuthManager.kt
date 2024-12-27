@@ -6,6 +6,7 @@ import com.TraSka.R
 import com.TraSka.Route
 import com.TraSka.User
 import com.TraSka.UserData
+import com.TraSka.Vehicle
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -98,7 +99,11 @@ class GoogleAuthManager(
                     for (route in snapshot.child("savedRoutes").children) {
                         routesList = routesList + (route.getValue(Route::class.java))!!
                     }
-                    val user = User(userData, routesList)
+                    var vehiclesList = listOf<Vehicle>()
+                    for (vehicle in snapshot.child("savedVehicles").children) {
+                        vehiclesList = vehiclesList + (vehicle.getValue(Vehicle::class.java))!!
+                    }
+                    val user = User(userData, routesList, vehiclesList)
                     if (user != null) {
                         onSuccess(user)
                     } else {

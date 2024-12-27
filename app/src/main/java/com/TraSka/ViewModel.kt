@@ -13,8 +13,10 @@ import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -91,13 +93,13 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         FirebaseDatabase.getInstance("https://traska-f9851-default-rtdb.europe-west1.firebasedatabase.app/")
     private val googleAuthManager = GoogleAuthManager(applicationContext, firebaseAuth)
 
-    //private var currentUser: User? = null
     private val _currentUser = MutableStateFlow<User?>(null)
     val currentUser: StateFlow<User?> = _currentUser
 
     private val placesClient by lazy { Places.createClient(applicationContext) }
 
     var currentSavedRoutes by mutableStateOf(listOf<Route>())
+    var currentSavedVehicles by mutableStateOf(listOf<Vehicle>())
     var routePoints by mutableStateOf(listOf<Point>())
     var locationState by mutableStateOf<LocationState>(LocationState.NoPermission)
     val locationAutofill = mutableStateListOf<AutocompleteResult>()
@@ -105,8 +107,14 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
     var userLatLong by mutableStateOf<LatLng?>(null)
     var userLocationText by mutableStateOf("")
     var userPlaceId by mutableStateOf("")
+    var selectedCar = mutableStateOf("")
+        private set
+    var selectedOption = mutableStateOf("driving")
+        private set
     var currentPointId by mutableStateOf(String())
     var currentSavingRouteLen = 0f
+    var currentNotOptimizedRoute by mutableStateOf<Route?>(null)
+    var currentOptimizedRoute by mutableStateOf<Route?>(null)
     var isLogged by mutableStateOf(false)
     var isLoading by mutableStateOf(false)
     private val _isLoggingLoading = MutableLiveData(true)
@@ -118,11 +126,29 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
     //region User functions
 
     fun clearViewModel() {
+        firebaseAuth.signOut()
         clearUser(null)
         routePoints = emptyList()
+        currentLatLong = null
         currentSavingRouteLen = 0f
         currentPointId = ""
         isLoading = false
+    }
+
+    fun setLoadingScreen() {
+        _isLoggingLoading.value = true
+    }
+
+    fun setLoadingScreenFalse() {
+        _isLoggingLoading.value = false
+    }
+
+    fun updateSelectedCar(newVehicle: String) {
+        selectedCar.value = newVehicle
+    }
+
+    fun updateSelectedOption(newOption: String) {
+        selectedOption.value = newOption
     }
 
     fun addPoint(pointClass: Point) {
@@ -137,6 +163,9 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
     fun delPoint(pointClass: Point) {
         routePoints = routePoints - pointClass
         userLatLong = userLatLong
+        if (routePoints.isEmpty()) {
+            currentLatLong = userLatLong
+        }
     }
 
     fun delRoute(route: Route, context: Context) {
@@ -151,7 +180,7 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
 
         userRouteRef!!.removeValue().addOnSuccessListener {
             currentUser.value!!.savedRoutes = currentUser.value!!.savedRoutes?.minus(route)
-            currentSavedRoutes = currentSavedRoutes.minus(route)
+            currentSavedRoutes = currentSavedRoutes - route
             Toast.makeText(context, "Route deleted successfully!", Toast.LENGTH_SHORT).show()
         }.addOnFailureListener { exception ->
             Toast.makeText(context, "Error while deleting route!", Toast.LENGTH_SHORT).show()
@@ -162,12 +191,16 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         _currentUser.value = user
         isLogged = user != null
         currentSavedRoutes = user!!.savedRoutes!!
+        currentSavedVehicles = user.savedVehicles!!
     }
 
     fun clearUser(user: User?) {
         _currentUser.value = user
         isLogged = user != null
         currentSavedRoutes = emptyList()
+        currentSavedVehicles = emptyList()
+        selectedCar.value = ""
+        selectedOption.value = "driving"
     }
 
     fun getUser(): User? {
@@ -182,12 +215,13 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         vehicle.id = newVehicleKey
         userVehiclesRef.child(newVehicleKey).setValue(vehicle).addOnSuccessListener {
             Log.d("Firebase", "Pojazd dodany do listy")
-            currentUser.value!!.savedVehicles.value = currentUser.value!!.savedVehicles.value.plus(vehicle)
-            Log.d("TRASKA", "Pojazd dodany do listy lokalnie")
+            currentUser.value!!.savedVehicles = currentUser.value!!.savedVehicles!!.plus(vehicle)
+            currentSavedVehicles = currentSavedVehicles + vehicle
+            Log.d("TRASKA", "Pojazd dodany do listy")
             Toast.makeText(context, "Vehicle saved successfully!", Toast.LENGTH_SHORT).show()
         }.addOnFailureListener { exception ->
             Log.e("Firebase", "Error dodawania pojazdu: $exception")
-            Toast.makeText(context, "Erroe while saving vehicle!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Error while saving vehicle!", Toast.LENGTH_SHORT).show()
         }
 
     }
@@ -203,7 +237,8 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         }
 
         userVehicleRef!!.removeValue().addOnSuccessListener {
-            currentUser.value!!.savedVehicles.value = currentUser.value!!.savedVehicles.value.minus(vehicle)
+            currentUser.value!!.savedVehicles = currentUser.value!!.savedVehicles!!.minus(vehicle)
+            currentSavedVehicles = currentSavedVehicles - vehicle
             Toast.makeText(context, "Vehicle deleted successfully!", Toast.LENGTH_SHORT).show()
         }.addOnFailureListener { exception ->
             Toast.makeText(context, "Error while deleting Vehicle!", Toast.LENGTH_SHORT).show()
@@ -289,7 +324,7 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
                     vehiclesList = vehiclesList + (vehicle.getValue(Vehicle::class.java))!!
                 }
 
-                val user = User(userData, routesList, mutableStateOf(vehiclesList))
+                val user = User(userData, routesList, vehiclesList)
 
                 callback.onResponse(user)
             }
@@ -355,7 +390,7 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
 
                     mDatabase.getReference("Users").child(userId).setValue(userModel)
                         .addOnSuccessListener() {
-                            navController.navigate(ScreenFlowHandler.RegisterSuccessfulScreen.route)
+                            //navController.navigate(ScreenFlowHandler.RegisterSuccessfulScreen.route)
                             readUserData(object : myCallback() {
                                 override fun onResponse(user: User?) {
                                     _currentUser.value = user
@@ -391,6 +426,7 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         googleAuthManager.signInWithGoogleCredential(credential, { user ->
             setUser(user)
             isLogged = true
+            _isLoggingLoading.value = false
         }, { error ->
             // error
         })
@@ -473,6 +509,10 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
                 val jsonResponse = JSONObject(response)
                 Log.println(Log.INFO, "JSON JSON JSON", response.toString())
                 val routes = jsonResponse.getJSONArray("routes")
+                if (routes.length() == 0) {
+                    Toast.makeText(context, "Error while getting directions. Impossible to reach (seas).", Toast.LENGTH_SHORT).show()
+                    return@Listener
+                }
                 val waypointsOrder = routes.getJSONObject(0).getJSONArray("waypoint_order")
 
                 for (i in 0 until waypointsOrder.length()) {
@@ -481,21 +521,201 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
                 }
                 var separatedWaypoints = waypoints.joinToString("|")
 
-                val url =
-                    "https://www.google.com/maps/dir/?api=1&avoid=$avoid&origin=$origin&destination=$destination&waypoints=$separatedWaypoints&travelmode=$travelMode"
-
-                Log.println(Log.INFO, "ZAPYTANIE2", url)
-
-                val intent = Intent(Intent.ACTION_VIEW)
-                intent.data = Uri.parse(url)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                ContextCompat.startActivity(context, intent, null)
+                openGoogleMaps(origin!!, separatedWaypoints, destination!!, avoid, travelMode, context)
             }, Response.ErrorListener { _ ->
+                Toast.makeText(context, "Error while getting directions.", Toast.LENGTH_SHORT).show()
             }) {}
 
         val requestQueue = Volley.newRequestQueue(context)
         requestQueue.add(directionsRequest)
 
+    }
+
+    fun sendRequestNotOptimized(context: Context, travelMode: String, avoid: String, vehicle: Vehicle? = null, callback: (Route?) -> Unit) {
+        val origin = routePoints.first().address
+        val destination = routePoints.last().address
+        val waypointsList = routePoints.subList(1, routePoints.size - 1)
+        val encodedOrigin = origin?.replace(" ", "%20")
+        val encodedDestination = destination?.replace(" ", "%20")
+        val encodedWaypoints =
+            waypointsList.joinToString("|") { it.address?.replace(" ", "%20").toString() }
+
+        val urlRequest =
+            "https://maps.googleapis.com/maps/api/directions/json?avoid=$avoid&origin=$encodedOrigin&destination=$encodedDestination&waypoints=optimize:false|$encodedWaypoints&mode=$travelMode&key=" + BuildConfig.DIRECTIONS_API_KEY
+
+        Log.i("URL not optimized", urlRequest)
+
+        val directionsRequest = object :
+            StringRequest(Request.Method.GET, urlRequest, Response.Listener<String> { response ->
+                val jsonResponse = JSONObject(response)
+                val routes = jsonResponse.getJSONArray("routes")
+                if (routes.length() == 0) {
+                    Toast.makeText(context, "Error while getting directions. Impossible to reach (seas).", Toast.LENGTH_SHORT).show()
+                    callback(null)
+                }
+                for (i in 0 until routes.length()) {
+                    val route = routes.getJSONObject(i)
+                    val legs = route.getJSONArray("legs")
+
+                    var totalDistance = 0
+
+                    for (j in 0 until legs.length()) {
+                        val leg = legs.getJSONObject(j)
+                        val distanceObject = leg.getJSONObject("distance")
+                        val distanceValue = distanceObject.getInt("value")
+
+                        totalDistance += distanceValue
+                    }
+                    currentSavingRouteLen = totalDistance.toFloat()
+                }
+                if (vehicle != null) {
+                    val burnedFuel =
+                        currentSavingRouteLen / 1000 * (vehicle.avgFuelConsumption!! / 100)
+                    val co2 = burnedFuel * 2.68f
+                    currentNotOptimizedRoute = Route(
+                        travelMode = travelMode,
+                        len = currentSavingRouteLen,
+                        point = routePoints,
+                        vehicle = vehicle,
+                        co2 = co2,
+                        avoid = avoid
+                    )
+                } else {
+                    currentNotOptimizedRoute = Route(
+                        travelMode = travelMode,
+                        len = currentSavingRouteLen,
+                        point = routePoints,
+                        vehicle = null,
+                        co2 = null,
+                        avoid = avoid
+                    )
+                }
+                callback(currentNotOptimizedRoute)
+            }, Response.ErrorListener { _ ->
+                callback(null)
+            }) {}
+
+        val requestQueue = Volley.newRequestQueue(context)
+        requestQueue.add(directionsRequest)
+
+    }
+
+    fun sendRequestOptimized(context: Context, travelMode: String, avoid: String, vehicle: Vehicle? = null, callback: (Route?) -> Unit) {
+        val origin = routePoints.first().address
+        val destination = routePoints.last().address
+        val waypointsList = routePoints.subList(1, routePoints.size - 1)
+        val encodedOrigin = origin?.replace(" ", "%20")
+        val encodedDestination = destination?.replace(" ", "%20")
+        val encodedWaypoints =
+            waypointsList.joinToString("|") { it.address?.replace(" ", "%20").toString() }
+
+        val urlRequest =
+            "https://maps.googleapis.com/maps/api/directions/json?avoid=$avoid&origin=$encodedOrigin&destination=$encodedDestination&waypoints=optimize:true|$encodedWaypoints&mode=$travelMode&key=" + BuildConfig.DIRECTIONS_API_KEY
+
+        Log.i("URL optimized", urlRequest)
+
+        var waypoints: MutableList<Point> = mutableListOf<Point>()
+        val directionsRequest = object :
+            StringRequest(Request.Method.GET, urlRequest, Response.Listener<String> { response ->
+                val jsonResponse = JSONObject(response)
+                val routes = jsonResponse.getJSONArray("routes")
+                if (routes.length() == 0) {
+                    Toast.makeText(context, "Error while getting directions. Impossible to reach (seas).", Toast.LENGTH_SHORT).show()
+                    return@Listener
+                }
+                val waypointsOrder = routes.getJSONObject(0).getJSONArray("waypoint_order")
+
+                for (i in 0 until waypointsOrder.length()) {
+                    val index = waypointsOrder.getInt(i)
+                    waypointsList[index].let { waypoints.add(it) }
+                }
+                waypoints.add(0, routePoints.first())
+                waypoints.add(waypoints.size, routePoints.last())
+                //var separatedWaypoints = waypoints.joinToString("|")
+
+                for (i in 0 until routes.length()) {
+                    val route = routes.getJSONObject(i)
+                    val legs = route.getJSONArray("legs")
+
+                    var totalDistance = 0
+
+                    for (j in 0 until legs.length()) {
+                        val leg = legs.getJSONObject(j)
+                        val distanceObject = leg.getJSONObject("distance")
+                        val distanceValue = distanceObject.getInt("value")
+
+                        totalDistance += distanceValue
+                    }
+                    currentSavingRouteLen = totalDistance.toFloat()
+
+                }
+                if (vehicle != null) {
+                    val burnedFuel =
+                        currentSavingRouteLen / 1000 * (vehicle.avgFuelConsumption!! / 100)
+                    val co2 = burnedFuel * 2.68f
+
+                    currentOptimizedRoute = Route(
+                        travelMode = travelMode,
+                        len = currentSavingRouteLen,
+                        point = waypoints,
+                        vehicle = vehicle,
+                        co2 = co2,
+                        avoid = avoid
+                    )
+                } else {
+                    currentOptimizedRoute = Route(
+                        travelMode = travelMode,
+                        len = currentSavingRouteLen,
+                        point = waypoints,
+                        vehicle = null,
+                        co2 = null,
+                        avoid = avoid
+                    )
+                }
+                callback(currentOptimizedRoute)
+            }, Response.ErrorListener { _ ->
+                callback(null)
+            }) {}
+
+        val requestQueue = Volley.newRequestQueue(context)
+        requestQueue.add(directionsRequest)
+    }
+
+    fun openGoogleMaps(origin: String, separatedWaypoints: String, destination: String, avoid: String, travelMode: String, context: Context)  {
+        val url =
+            "https://www.google.com/maps/dir/?api=1&avoid=$avoid&origin=$origin&destination=$destination&waypoints=$separatedWaypoints&travelmode=$travelMode"
+
+        Log.println(Log.INFO, "ZAPYTANIE2", url)
+
+        val intent = Intent(Intent.ACTION_VIEW)
+        intent.data = Uri.parse(url)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        ContextCompat.startActivity(context, intent, null)
+    }
+
+    fun openGoogleMaps(route: Route, context: Context)  {
+        val origin = route.point!!.first().address
+        val destination = route.point.last().address
+        val avoid = if (route.avoid == null) "" else route.avoid
+
+        val addresses = mutableListOf<String>()
+        for (point in route.point.subList(1, route.point.size - 1)) {
+            val address = point.address
+            addresses.add(address!!)
+        }
+
+        val waypointsList = addresses
+        var separatedWaypoints = waypointsList.joinToString("|")
+
+        val url =
+            "https://www.google.com/maps/dir/?api=1&avoid=${avoid}&origin=$origin&destination=$destination&waypoints=$separatedWaypoints&travelmode=${route.travelMode}"
+
+        Log.println(Log.INFO, "ZAPYTANIE2", url)
+
+        val intent = Intent(Intent.ACTION_VIEW)
+        intent.data = Uri.parse(url)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        ContextCompat.startActivity(context, intent, null)
     }
 
     fun sendRequestOpenMaps(context: Context, route: Route) {
@@ -557,12 +777,12 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
         userRoutesRef.child(newRouteKey).setValue(route).addOnSuccessListener {
             Log.d("Firebase", "Trasa dodana do listy")
             currentUser.value!!.savedRoutes = currentUser.value!!.savedRoutes?.plus(route)
-            currentSavedRoutes = currentSavedRoutes.plus(route)
+            currentSavedRoutes = currentSavedRoutes + route
             Log.d("TRASKA", "Trasa dodana do listy lokalnie")
             Toast.makeText(context, "Route saved successfully!", Toast.LENGTH_SHORT).show()
         }.addOnFailureListener { exception ->
             Log.e("Firebase", "Error dodawania trasy: $exception")
-            Toast.makeText(context, "Erroe while saving route!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Error while saving route!", Toast.LENGTH_SHORT).show()
         }
 
     }
@@ -614,7 +834,7 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
                     Log.println(
                         Log.INFO,
                         "Trasa",
-                        "Łączna odległość: $totalDistance metrów. Zapisana currentDlugosc: $currentSavingRouteLen"
+                        "Łączna odległość: $totalDistance metrów. Zapisana current Dlugosc: $currentSavingRouteLen"
                     )
                     val savingRoute = Route(
                         name, travelMode, currentSavingRouteLen, routePoints, shareUrl = url

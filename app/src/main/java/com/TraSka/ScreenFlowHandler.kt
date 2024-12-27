@@ -8,6 +8,7 @@ sealed class ScreenFlowHandler(val route: String) {
     object RegisterSuccessfulScreen : ScreenFlowHandler("register_successful_screen")
     object RegisterErrorScreen : ScreenFlowHandler("register_error_screen")
     object RoutePlannerScreen : ScreenFlowHandler("route_planner_screen")
+    object OptimizedRouteScreen : ScreenFlowHandler("optimized_route_screen")
     object LocationScreen : ScreenFlowHandler("location_screen")
     object SavedRoutesScreen : ScreenFlowHandler("saved_routes_screen")
     object StartScreen : ScreenFlowHandler("start_screen")

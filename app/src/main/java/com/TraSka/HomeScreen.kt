@@ -1,6 +1,7 @@
 package com.TraSka.com.TraSka
 
 import android.annotation.SuppressLint
+import android.content.Context
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -19,13 +20,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Place
@@ -34,6 +40,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -42,342 +49,297 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.TraSka.DeleteRouteDialog
 import com.TraSka.LocationViewModel
 import com.TraSka.R
 import com.TraSka.Route
 import com.TraSka.ScreenFlowHandler
 import com.TraSka.User
+import com.TraSka.Vehicle
+import kotlinx.coroutines.launch
 import java.util.Locale
+import kotlin.math.roundToLong
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(navController: NavController, viewModel: LocationViewModel) {
     val currentUser: User? = viewModel.getUser()
-    val routes = remember { mutableStateOf(viewModel.currentSavedRoutes) }
+    val context = LocalContext.current
+    val drawableIdMap = mapOf(
+        "driving" to R.drawable.small_car_dark,
+        "walking" to R.drawable.walking,
+        "bicycling" to R.drawable.bicycling
+    )
     val openAlertDialog = remember { mutableStateOf(false) }
 
     if (currentUser != null) {
         Column(
             modifier = Modifier
-                .fillMaxSize(),
+                .fillMaxSize()
+                .background(Color(0xFF222831))
+                .padding(10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.Top
         ) {
-
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .height(100.dp)
-                        .fillMaxWidth()
-                        .clip(shape = RoundedCornerShape(0.dp, 0.dp, 50.dp, 50.dp))
-                        .background(Color(0xFF222831)),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Image(
-                        modifier = Modifier
-                            .size(80.dp, 80.dp)
-                            .clickable {
-
-                            },
-                        painter = painterResource(R.drawable.acc),
-                        contentDescription = null,
-                    )
-                    Text(
-                        text = currentUser?.userData?.login!!,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0D99FF),
-                    )
-                }
-
-                Row(
-                    modifier = Modifier
-                        .height(90.dp)
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Image(
-                        modifier = Modifier.size(60.dp, 60.dp),
-                        painter = painterResource(R.drawable.route),
-                        contentDescription = null
-                    )
-                    Column(
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "Routes",
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(5.dp))
-                        Text(
-                            text = currentUser?.savedRoutes!!.size.toString(),
-                            color = Color(0xFF0D99FF),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp
-                        )
-                    }
-                    Column(
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "Kilometers",
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(5.dp))
-                        var km = 0f
-                        for (route in currentUser!!.savedRoutes!!) {
-                            km += route.len!!
-                        }
-                        Text(
-                            text = (km / 1000).toInt().toString(),
-                            color = Color(0xFF0D99FF),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp
-                        )
-                    }
-                }
-            }
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(shape = RoundedCornerShape(50.dp, 50.dp, 0.dp, 0.dp))
-                    .background(Color(0xFF222831)),
+                    .weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween
+                verticalArrangement = Arrangement.Top
             ) {
-                Spacer(modifier = Modifier.height(10.dp))
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.weight(5f)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start,
                 ) {
-                    if (routes.value.isNotEmpty()) {
-                        var routesSub = emptyList<Route>()
+                    Text(
+                        "Recently saved routes",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(10.dp)
+                    )
+                }
+                if (viewModel.currentSavedRoutes.isNotEmpty()) {
+                    val routesSub = if (viewModel.currentSavedRoutes.size >= 5) {
+                        viewModel.currentSavedRoutes.takeLast(5).reversed()
+                    } else {
+                        viewModel.currentSavedRoutes.reversed()
+                    }
 
-                        if (routes.value.size >= 5) {
-                            routesSub =
-                                routes.value.subList(
-                                    routes.value.size - 5,
-                                    routes.value.lastIndex + 1
-                                )
-                            routesSub = routesSub.reversed()
-                        } else {
-                            routesSub = routes.value
-                            routesSub = routesSub.reversed()
-                        }
+                    val pagerState =
+                        rememberPagerState(initialPage = 0, pageCount = { routesSub.size })
+                    val coroutineScope = rememberCoroutineScope()
 
-                        val pagerState =
-                            rememberPagerState(initialPage = 0, 0f) { routesSub.size }
-                        Text(
-                            text = "Last saved routes",
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                    ) { index ->
+                        Card(
+                            elevation = CardDefaults.cardElevation(3.dp),
                             modifier = Modifier
-                                .padding(15.dp, 5.dp, 15.dp, 0.dp)
-                                .clip(shape = RoundedCornerShape(40.dp, 40.dp, 10.dp, 10.dp))
-                                .background(Color.Black)
-                                .height(50.dp)
-                                .fillMaxWidth()
-                                .wrapContentHeight(align = Alignment.CenterVertically),
-                            color = Color(0xFFFFFFFF),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 17.sp,
-                            textAlign = TextAlign.Center,
-                        )
-                        HorizontalPager(
-                            state = pagerState
-                        ) { index ->
-                            Card(
-                                elevation = CardDefaults.cardElevation(3.dp),
-                                modifier = Modifier.padding(15.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = Color(
-                                        0xFF272E38
-                                    )
-                                )
+                                .fillMaxSize()
+                                .padding(5.dp),
+                            shape = RoundedCornerShape(5.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFF2C333F)
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Top
                             ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .height(400.dp)
-                                        .padding(0.dp)
-                                        //.border(BorderStroke(1.dp,Color(0xFF0D99FF)),shape = RoundedCornerShape(10.dp))
-                                        .clip(shape = RoundedCornerShape(10.dp))
-                                        //.background(Color(0xFF272E38))
-                                        .verticalScroll(rememberScrollState()),
-                                    horizontalAlignment = Alignment.CenterHorizontally
+                                Text(
+                                    routesSub[index].name!!.uppercase(),
+                                    color = Color(0xFF0D99FF),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxHeight()
                                 ) {
-                                    routesSub[index].name?.uppercase(Locale.getDefault())?.let {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .fillMaxHeight()
+                                            .weight(1f),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.SpaceEvenly
+                                    ) {
                                         Text(
-                                            text = it,
-                                            modifier = Modifier.padding(15.dp),
-                                            fontSize = 25.sp,
+                                            modifier = Modifier.padding(start = 10.dp, end = 10.dp),
+                                            text = routesSub[index].point!!.first().address!!,
+                                            color = Color.White,
+                                            fontSize = 14.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF0D99FF)
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis,
+                                            textAlign = TextAlign.Center
+                                        )
+                                        Image(
+                                            modifier = Modifier.size(50.dp),
+                                            painter = painterResource(R.drawable.to_down_dark),
+                                            contentDescription = "to_dark down",
+                                        )
+                                        Text(
+                                            modifier = Modifier.padding(start = 10.dp, end = 10.dp),
+                                            text = routesSub[index].point!!.last().address!!,
+                                            color = Color.White,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis,
+                                            textAlign = TextAlign.Center
                                         )
                                     }
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .fillMaxHeight()
+                                            .weight(1f),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.SpaceEvenly
                                     ) {
                                         Column(
                                             modifier = Modifier
-                                                .weight(1f)
-                                                .padding(25.dp, 0.dp, 0.dp, 0.dp)
-                                                .fillMaxSize(),
-                                            horizontalAlignment = Alignment.Start
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.padding(
-                                                    0.dp,
-                                                    0.dp,
-                                                    0.dp,
-                                                    0.dp
-                                                )
-                                            ) {
-                                                Image(
-                                                    imageVector = Icons.Filled.Home,
-                                                    contentDescription = "Home",
-                                                    modifier = Modifier.size(40.dp)
-                                                )
-                                                Spacer(modifier = Modifier.width(10.dp))
-                                                routesSub[index].point?.first().let {
-                                                    it!!.address?.let { it1 ->
-                                                        Text(
-                                                            text = it1,
-                                                            fontSize = 16.sp,
-                                                            color = Color.White
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                            Spacer(modifier = Modifier.height(25.dp))
-                                            Row(
-                                                modifier = Modifier.padding(0.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Image(
-                                                    imageVector = Icons.Filled.MoreVert,
-                                                    contentDescription = "Place",
-                                                    modifier = Modifier.size(40.dp)
-                                                )
-                                                Spacer(modifier = Modifier.width(10.dp))
-                                                if (routesSub[index].point!!.size > 2) {
-                                                    Text(
-                                                        text = "(" + (routesSub[index].point!!.size - 2).toString() + ")",
-                                                        color = Color.White,
-                                                    )
-                                                }
-                                            }
-                                            Spacer(modifier = Modifier.height(25.dp))
-                                            Row(
-                                                modifier = Modifier
-                                                    .padding(0.dp)
-                                            ) {
-                                                Image(
-                                                    imageVector = Icons.Filled.Place,
-                                                    contentDescription = "Place",
-                                                    modifier = Modifier.size(40.dp)
-                                                )
-                                                Spacer(modifier = Modifier.width(10.dp))
-                                                routesSub[index].point?.last().let {
-                                                    it!!.address?.let { it1 ->
-                                                        Text(
-                                                            text = it1,
-                                                            fontSize = 16.sp,
-                                                            color = Color.White
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        Column(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .height(250.dp),
+                                                .fillMaxWidth(0.8f)
+                                                .clip(RoundedCornerShape(5.dp))
+                                                .background(Color.White)
+                                                .padding(10.dp),
                                             horizontalAlignment = Alignment.CenterHorizontally,
                                             verticalArrangement = Arrangement.Center
                                         ) {
-                                            routesSub[index].len?.let {
-                                                Text(
-                                                    text = (it / 1000).toInt()
-                                                        .toString() + " km",
-                                                    color = Color.White,
-                                                    fontSize = 20.sp,
-                                                    fontWeight = FontWeight.Bold
+                                            Text(
+                                                "Travel mode",
+                                                color = Color.Black,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Image(
+                                                modifier = Modifier.size(35.dp),
+                                                painter = painterResource(drawableIdMap[routesSub[index].travelMode]!!),
+                                                contentDescription = "to_dark down",
+
                                                 )
-                                            }
-                                            Spacer(modifier = Modifier.height(25.dp))
-                                            routesSub[index].travelMode?.let {
-                                                if (it == "driving") {
-                                                    Image(
-                                                        modifier = Modifier
-                                                            .size(80.dp, 80.dp)
-                                                            .padding(10.dp)
-                                                            .clip(RoundedCornerShape(10.dp))
-                                                            .background(Color.White),
-                                                        painter = painterResource(R.drawable.driving),
-                                                        contentDescription = "driving mode"
-                                                    )
-                                                } else {
-                                                    Image(
-                                                        modifier = Modifier
-                                                            .size(80.dp, 80.dp)
-                                                            .padding(10.dp)
-                                                            .clip(RoundedCornerShape(10.dp))
-                                                            .background(Color.White),
-                                                        painter = painterResource(R.drawable.walking),
-                                                        contentDescription = "walking mode"
-                                                    )
-                                                }
-                                            }
+                                        }
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth(0.8f)
+                                                .clip(RoundedCornerShape(5.dp))
+                                                .background(Color.White)
+                                                .padding(10.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Center
+                                        ) {
+                                            Text(
+                                                "Distance",
+                                                color = Color.Black,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Text(
+                                                String.format(
+                                                    "%.1f",
+                                                    (routesSub[index].len!! / 1000)
+                                                ) + " km",
+                                                color = Color.Black,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Normal
+                                            )
                                         }
                                     }
-
                                 }
                             }
                         }
-                    } else {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxSize(),
-
-                            ) {
-                            Text(
-                                text = "Plan your first route!",
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                fontSize = 18.sp
-                            )
-
-                            Spacer(modifier = Modifier.height(20.dp))
-
-                            Button(
-                                onClick = { navController.navigate(ScreenFlowHandler.RoutePlannerScreen.route) },
-                                shape = RoundedCornerShape(10.dp),
+                    }
+                    Row(
+                        modifier = Modifier
+                            .padding(top = 5.dp)
+                            .wrapContentWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        repeat(routesSub.size) { pageIndex ->
+                            val isSelected = pageIndex == pagerState.currentPage
+                            Box(
                                 modifier = Modifier
-                                    .size(50.dp, 50.dp),
-                                contentPadding = PaddingValues(0.dp),
-                                colors = ButtonDefaults.buttonColors(Color(0xFF0D99FF))
-                            ) {
-                                Image(
-                                    modifier = Modifier.size(25.dp, 25.dp),
-                                    painter = painterResource(R.drawable.plus),
-                                    contentDescription = null
-                                )
-                            }
+                                    .size(if (isSelected) 12.dp else 8.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (isSelected) Color.White else Color.Gray
+                                    )
+                                    .clickable {
+                                        coroutineScope.launch {
+                                            pagerState.scrollToPage(pageIndex)
+                                        }
+                                    }
+                            )
                         }
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            "You don't have any saved routes yet.\nSave your first one!",
+                            color = Color.Gray,
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center
+                        )
+
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(Color(0xFF2C333F))
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Top
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        "Saved routes",
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        fontSize = 18.sp
+                    )
+                    Button(
+                        modifier = Modifier
+                            .size(40.dp, 40.dp),
+                        contentPadding = PaddingValues(0.dp),
+                        shape = RoundedCornerShape(5.dp),
+                        onClick = {
+                            navController.navigate(ScreenFlowHandler.RoutePlannerScreen.route){
+                                popUpTo(navController.graph.startDestinationId) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D99FF))
+                    ) {
+                        Icon(
+                            Icons.Filled.Add,
+                            contentDescription = "add route",
+                            tint = Color.White
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(viewModel.currentSavedRoutes) { route ->
+                        RouteItem(navController, viewModel, context, route)
                     }
                 }
             }
@@ -387,5 +349,122 @@ fun HomeScreen(navController: NavController, viewModel: LocationViewModel) {
 
 
 //region Composables
+
+@Composable
+fun RouteItem(navController: NavController, viewModel: LocationViewModel, context: Context, route: Route) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape = RoundedCornerShape(5.dp))
+            .background(Color.White)
+            .padding(10.dp)
+            .height(100.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                route.name?.let {
+                    Text(
+                        modifier = Modifier.padding(start = 10.dp, end = 20.dp),
+                        text = it.uppercase(Locale.getDefault()),
+                        color = Color(0xFF0D99FF),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    modifier = Modifier.padding(start = 10.dp, end = 20.dp),
+                    text = "Distance: " + String.format("%.1f", (route.len!! / 1000)) + " km",
+                    color = Color.Black,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = {
+                        viewModel.delRoute(route, context)
+                    },
+                    modifier = Modifier
+                        .padding(0.dp, 0.dp, 0.dp, 0.dp)
+                        .weight(0.5f),
+                    shape = RoundedCornerShape(5.dp),
+                    contentPadding = PaddingValues(0.dp),
+                    colors = ButtonDefaults.buttonColors(Color(0xFFEBF5FC))
+                ) {
+                    Image(
+                        imageVector = Icons.Filled.Delete,
+                        contentDescription = "Delete",
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Button(
+                    onClick = {
+                        viewModel.routePoints = route.point!!
+                        route.travelMode?.let { viewModel.updateSelectedOption(it) }
+                        if (route.vehicle != null) {
+                            route.vehicle!!.name?.let { viewModel.updateSelectedCar(it) }
+                        }
+                        navController.navigate(ScreenFlowHandler.RoutePlannerScreen.route) {
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(5.dp),
+                    contentPadding = PaddingValues(10.dp),
+                    colors = ButtonDefaults.buttonColors(Color(0xFFEBF5FC))
+                ) {
+                    Text(
+                        "Open in Planner",
+                        color = Color.Black,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Button(
+                    onClick = {
+                        viewModel.openGoogleMaps(route, context)
+                    },
+                    modifier = Modifier
+                        .weight(1f),
+                    shape = RoundedCornerShape(5.dp),
+                    contentPadding = PaddingValues(10.dp),
+                    colors = ButtonDefaults.buttonColors(Color(0xFFEBF5FC))
+                ) {
+                    Text(
+                        "Google Maps",
+                        color = Color.Black,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
 
 //endregion
