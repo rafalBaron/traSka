@@ -62,6 +62,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.TraSka.com.TraSka.AccountScreen
 import com.TraSka.com.TraSka.HomeScreen
+import com.TraSka.com.TraSka.OptimizedRouteScreen
 import com.TraSka.com.TraSka.RegisterScreen
 import com.TraSka.ui.theme.TraSkaTheme
 
@@ -112,6 +113,7 @@ fun MainScreen(viewModel: LocationViewModel) {
                     "home_screen" -> "Home"
                     "account_screen" -> "Account"
                     "route_planner_screen" -> "Route planner"
+                    "optimized_route_screen" -> "Optimization results"
                     else -> ""
                 }
 
@@ -158,10 +160,10 @@ fun MainScreen(viewModel: LocationViewModel) {
                         startDestination = startDestination,
                         modifier = Modifier.padding(innerPadding),
                         enterTransition = {
-                            fadeIn(tween(100))
+                            fadeIn(tween(0))
                         },
                         exitTransition = {
-                            fadeOut(tween(100))
+                            fadeOut(tween(0))
                         }) {
                         composable("login_screen") { LoginScreen(navController, viewModel) }
                         composable("register_screen") {
@@ -209,6 +211,12 @@ fun MainScreen(viewModel: LocationViewModel) {
                                 viewModel
                             )
                         }
+                        composable("optimized_route_screen") {
+                            OptimizedRouteScreen(
+                                navController,
+                                viewModel
+                            )
+                        }
                         composable("saved_routes_screen") {
                             SavedRoutesScreen(
                                 navController,
@@ -225,9 +233,8 @@ fun MainScreen(viewModel: LocationViewModel) {
 
 @Composable
 fun TabView(tabBarItems: List<TabBarItem>, navController: NavController) {
-    var selectedTabIndex by rememberSaveable {
-        mutableIntStateOf(1)
-    }
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = currentBackStackEntry?.destination?.route
 
     NavigationBar(
         containerColor = Color(0xFF222831),
@@ -236,21 +243,33 @@ fun TabView(tabBarItems: List<TabBarItem>, navController: NavController) {
             .height(55.dp)
             .shadow(10.dp, ambientColor = Color.White, spotColor = Color.White)
     ) {
-        tabBarItems.forEachIndexed { index, tabBarItem ->
+        tabBarItems.forEach { tabBarItem ->
+            val isSelected = currentRoute == tabBarItem.screenName
+
             NavigationBarItem(
                 modifier = Modifier.padding(top = 10.dp),
-                selected = selectedTabIndex == index, onClick = {
-                    selectedTabIndex = index
-                    navController.navigate(tabBarItem.screenName)
-                }, icon = {
+                selected = isSelected,
+                onClick = {
+                    if (!isSelected) {
+                        navController.navigate(tabBarItem.screenName) {
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                },
+                icon = {
                     TabBarIconView(
-                        isSelected = selectedTabIndex == index,
+                        isSelected = isSelected,
                         selectedIcon = tabBarItem.selectedIcon,
                         unselectedIcon = tabBarItem.unselectedIcon,
                         title = tabBarItem.title,
                         badgeAmount = tabBarItem.badgeAmount,
                     )
-                }, label = {
+                },
+                label = {
                     Text(
                         tabBarItem.title,
                         modifier = Modifier.offset(y = (-10).dp),
@@ -267,6 +286,8 @@ fun TabView(tabBarItems: List<TabBarItem>, navController: NavController) {
         }
     }
 }
+
+
 
 @Composable
 fun TabBarIconView(

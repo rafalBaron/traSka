@@ -323,10 +323,10 @@ fun GoogleSection(navController: NavController, viewModel: LocationViewModel) {
                 val account = task.getResult(ApiException::class.java)
                 val credential = GoogleAuthProvider.getCredential(account.idToken, null)
 
+                viewModel.setLoadingScreen()
                 viewModel.signInWithGoogle(credential)
 
                 navController.navigate(ScreenFlowHandler.HomeScreen.route)
-
             } catch (e: ApiException) {
                 Log.e("GoogleSection", "Google sign-in failed", e)
             }

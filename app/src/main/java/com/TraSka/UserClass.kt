@@ -8,5 +8,5 @@ import com.google.firebase.database.IgnoreExtraProperties
 data class User(
     var userData: UserData?,
     var savedRoutes: List<Route>? = emptyList(),
-    var savedVehicles: MutableState<List<Vehicle>> = mutableStateOf(emptyList())
+    var savedVehicles: List<Vehicle>? = emptyList()
 ) {}

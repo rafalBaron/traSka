@@ -50,6 +50,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -61,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -107,13 +109,12 @@ fun RoutePlannerScreen(
     val openAlertDialog = remember { mutableStateOf(false) }
     val notLoggedAlert = remember { mutableStateOf(false) }
     var travelOptionExpanded by remember { mutableStateOf(false) }
-    var selectedOption by remember { mutableStateOf("driving") }
-    val carSelect = listOf("Golf", "Honda", "Toyota")
-    var selectedCar by remember { mutableStateOf(carSelect[0]) }
+    var selectedOption by viewModel.selectedOption
+    var selectedCar by viewModel.selectedCar
     val travelOptions = listOf("driving", "bicycling", "walking")
     var carSelectExpanded by remember { mutableStateOf(false) }
     val drawableIdMap = mapOf(
-        "driving" to R.drawable.driving,
+        "driving" to R.drawable.small_car_dark,
         "walking" to R.drawable.walking,
         "bicycling" to R.drawable.bicycling
     )
@@ -125,6 +126,7 @@ fun RoutePlannerScreen(
     val focusRequester = remember { FocusRequester() }
     var isFocused by remember { mutableStateOf(false) }
     var focusManager = LocalFocusManager.current
+
 
     val lazyListState = rememberLazyListState()
     val reorderableLazyListState = rememberReorderableLazyListState(lazyListState) { from, to ->
@@ -192,7 +194,8 @@ fun RoutePlannerScreen(
                         )
                         Icon(
                             Icons.Filled.ArrowDropDown,
-                            contentDescription = "Arrow dropdown"
+                            contentDescription = "Arrow dropdown",
+                            tint = Color.Black
                         )
                     }
                 }
@@ -217,40 +220,14 @@ fun RoutePlannerScreen(
                             }
                         }, onClick = {
                             selectedOption = option
+                            if (selectedOption != "driving") {
+                                selectedCar = ""
+                            }
                             travelOptionExpanded = false
                         })
                     }
                 }
             }
-            /*Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = "Avoid tolls",
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    fontSize = 11.sp
-                )
-                Checkbox(
-                    modifier = Modifier.graphicsLayer(
-                        scaleX = 1.5f, scaleY = 1.5f
-                    ),
-                    checked = tollsChecked,
-                    onCheckedChange = { tollsChecked = it },
-                    colors = CheckboxDefaults.colors(
-                        checkedColor = Color(0xFF0D99FF),
-                        uncheckedColor = Color(0xFF0D99FF),
-                        checkmarkColor = Color.White,
-                        disabledCheckedColor = Color.Gray,
-                        disabledUncheckedColor = Color.Gray
-                    ),
-                    enabled = !(selectedOption == "walking" || selectedOption == "bicycling")
-                )
-            }*/
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -290,7 +267,7 @@ fun RoutePlannerScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = "Select car",
+                    text = "Select vehicle",
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     fontSize = 11.sp
@@ -311,7 +288,9 @@ fun RoutePlannerScreen(
                     Row(
                         horizontalArrangement = Arrangement.SpaceAround,
                     ) {
-                        Text(selectedCar)
+                        Text(
+                            text = selectedCar
+                        )
                         Icon(
                             Icons.Filled.ArrowDropDown,
                             contentDescription = "Arrow dropdown"
@@ -321,17 +300,17 @@ fun RoutePlannerScreen(
                 DropdownMenu(modifier = Modifier.width(with(LocalDensity.current) { carSelectParentSize.width.toDp() }),
                     expanded = carSelectExpanded,
                     onDismissRequest = { carSelectExpanded = false }) {
-                    carSelect.forEach { car ->
+                    viewModel.currentSavedVehicles.forEach { vehicle ->
                         DropdownMenuItem(modifier = Modifier, text = {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center
                             ) {
-                                Text(car)
+                                vehicle.name?.let { Text(it) }
                             }
                         }, onClick = {
-                            selectedCar = car
+                            selectedCar = vehicle.name!!
                             carSelectExpanded = false
                         })
                     }
@@ -345,27 +324,48 @@ fun RoutePlannerScreen(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             OutlinedTextFieldBackground(Color.White) {
-                OutlinedTextField(
-                    value = viewModel.text,
-                    onValueChange = {
-                        viewModel.text = it
-                        viewModel.searchPlaces(it)
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent,
-                    ),
-                    shape = RoundedCornerShape(10.dp),
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .height(55.dp)
                         .fillMaxWidth(0.85f)
-                        .onFocusChanged { focusState ->
-                            isFocused = focusState.isFocused
+                ) {
+                    OutlinedTextField(
+                        value = viewModel.text,
+                        onValueChange = {
+                            viewModel.text = it
+                            viewModel.searchPlaces(it)
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent,
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .onFocusChanged { focusState ->
+                                isFocused = focusState.isFocused
+                            }
+                            .focusRequester(focusRequester),
+                        maxLines = 1,
+                        placeholder = { Text("Search for address", color = Color.LightGray) },
+                        trailingIcon = {
+                            if (viewModel.text.isNotEmpty()) {
+                                IconButton(onClick = {
+                                    viewModel.text = ""
+                                    viewModel.locationAutofill.clear()
+                                    //isFocused = false
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Clear,
+                                        contentDescription = "Clear text",
+                                        tint = Color.Gray
+                                    )
+                                }
+                            }
                         }
-                        .focusRequester(focusRequester),
-                    maxLines = 1,
-                    placeholder = { Text("Search for address", color = Color.LightGray) }
-                )
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(10.dp))
             Button(
@@ -390,7 +390,7 @@ fun RoutePlannerScreen(
                         ).show()
                     }
                 },
-                shape = RoundedCornerShape(10.dp),
+                shape = RoundedCornerShape(5.dp),
                 modifier = Modifier
                     .height(55.dp)
                     .fillMaxWidth(),
@@ -424,8 +424,9 @@ fun RoutePlannerScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(50.dp)
+                                .height(60.dp)
                                 .clip(shape = RoundedCornerShape(5.dp))
+                                .background(Color(0xFFD6D9DB))
                                 .clickable {
                                     viewModel.text = viewModel.userLocationText
                                     viewModel.locationAutofill.clear()
@@ -441,7 +442,9 @@ fun RoutePlannerScreen(
                                 contentDescription = "my location"
                             )
                             Spacer(modifier = Modifier.width(10.dp))
-                            Text(viewModel.userLocationText)
+                            Text(viewModel.userLocationText,
+                                fontWeight = FontWeight.Bold,
+                                )
                         }
                     }
                 }
@@ -452,7 +455,7 @@ fun RoutePlannerScreen(
                         .fillMaxWidth(0.85f)
                         .padding(0.dp, 0.dp, 0.dp, 0.dp)
                         .zIndex(2f)
-                        .offset(0.dp, (52).dp),
+                        .offset(0.dp, (63).dp),
                     color = Color.White,
                     shape = RoundedCornerShape(0.dp, 0.dp, 5.dp, 5.dp)
                 ) {
@@ -462,7 +465,9 @@ fun RoutePlannerScreen(
                     ) {
                         AnimatedVisibility(
                             viewModel.locationAutofill.isNotEmpty(),
-                            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .fillMaxHeight(0.9f)
                         ) {
                             LazyColumn(
                                 verticalArrangement = Arrangement.spacedBy(7.dp),
@@ -510,9 +515,9 @@ fun RoutePlannerScreen(
                     state = lazyListState,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(shape = RoundedCornerShape(5.dp,))
-                        .heightIn(min = 0.dp, max = 175.dp)
-                        .background(Color(0xFF455163))
+                        .clip(shape = RoundedCornerShape(5.dp))
+                        .heightIn(min = 110.dp, max = 175.dp)
+                        .background(Color(0xFF2C333F))
                         .padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     itemsIndexed(
@@ -736,7 +741,35 @@ fun RoutePlannerScreen(
                         avoid =
                             if (highwaysChecked && tollsChecked) "highways|tolls" else if (highwaysChecked) "highways" else if (tollsChecked) "tolls" else ""
                         if (viewModel.routePoints.size > 1) {
-                            viewModel.sendRequestOpenMaps(context = context, selectedOption, avoid)
+                            if (viewModel.isLogged) {
+                                viewModel.setLoadingScreen()
+                                val vehicle =
+                                    viewModel.currentUser.value!!.savedVehicles!!.find { it.name == selectedCar }
+                                viewModel.sendRequestNotOptimized(
+                                    context = context,
+                                    travelMode = selectedOption,
+                                    avoid = avoid,
+                                    vehicle = vehicle
+                                ) { route ->
+                                    if (route != null) {
+                                        viewModel.sendRequestOptimized(
+                                            context = context,
+                                            travelMode = selectedOption,
+                                            avoid = avoid,
+                                            vehicle = vehicle
+                                        ) { routeOpt ->
+                                            if (routeOpt != null) {
+                                                navController.navigate(ScreenFlowHandler.OptimizedRouteScreen.route)
+                                                viewModel.setLoadingScreenFalse()
+                                            }
+                                        }
+                                    } else {
+                                        viewModel.setLoadingScreenFalse()
+                                    }
+                                }
+                            } else {
+                                viewModel.sendRequestOpenMaps(context = context, selectedOption, avoid)
+                            }
                         } else {
                             Toast.makeText(
                                 context, "Choose at least 2 points!", Toast.LENGTH_SHORT
@@ -749,7 +782,13 @@ fun RoutePlannerScreen(
                     shape = RoundedCornerShape(5.dp),
                     colors = ButtonDefaults.buttonColors(Color(0xFF0D99FF))
                 ) {
-                    Text("Optimize")
+                    Text(
+                        "OPTIMIZE",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        letterSpacing = 1.sp
+                    )
                 }
             }
         }

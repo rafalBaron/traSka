@@ -2,10 +2,14 @@ package com.TraSka.com.TraSka
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.*
@@ -15,9 +19,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,11 +47,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.TraSka.LocationViewModel
@@ -72,11 +83,8 @@ fun AccountScreen(navController: NavController, viewModel: LocationViewModel) {
                 },
                 onConfirmation = {
                     logoutAlert.value = false
-                    viewModel
-                        .clearViewModel()
-                        .also {
-                            navController.navigate(ScreenFlowHandler.StartScreen.route)
-                        }
+                    viewModel.clearViewModel()
+                    navController.navigate(ScreenFlowHandler.StartScreen.route)
                     println("Sign out")
                 },
                 dialogTitle = "Do you want to sign out?",
@@ -108,10 +116,11 @@ fun AccountScreen(navController: NavController, viewModel: LocationViewModel) {
             AddVehicleDialog(
                 vehicleAddAlert,
                 onDismissRequest = {},
-                onSave = { name, avgFuelConsumption, type ->
+                context = context,
+                onSave = { name, avgFuelConsumption, type, fuelType ->
                     currentUser!!.userData!!.uid?.let {
                         try {
-                            if (name.isEmpty() || avgFuelConsumption.isEmpty() || type.isEmpty()) {
+                            if (name.isEmpty() || avgFuelConsumption.isEmpty() || type.isEmpty() || fuelType.isEmpty()) {
                                 throw Exception("FieldsEmpty")
                             }
                             if (name.length > 16) {
@@ -166,10 +175,10 @@ fun AccountScreen(navController: NavController, viewModel: LocationViewModel) {
             logoutAlert
         )
         Spacer(modifier = Modifier.height(10.dp))
-            CarsSection(
-                viewModel, modifier = Modifier.weight(2f),
-                currentUser!!.savedVehicles!!, currentUser, context, vehicleAddAlert
-            )
+        CarsSection(
+            viewModel, modifier = Modifier.weight(2f), context, vehicleAddAlert
+        )
+
 
     }
 
@@ -257,13 +266,13 @@ fun UserDataSection(
                     contentPadding = PaddingValues(0.dp),
                     shape = RoundedCornerShape(5.dp),
                     onClick = { },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D99FF))
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
                 ) {
-                    Icon(
+                    /*Icon(
                         Icons.Filled.Edit,
                         contentDescription = "Edit password",
                         tint = Color.White
-                    )
+                    )*/
                 }
             }
         }
@@ -356,8 +365,6 @@ fun SignOptionSection(
 fun CarsSection(
     viewModel: LocationViewModel,
     modifier: Modifier,
-    userVehicles: MutableState<List<Vehicle>>,
-    currentUser: User?,
     context: Context,
     vehicleAddAlert: MutableState<Boolean>
 ) {
@@ -379,7 +386,7 @@ fun CarsSection(
                 "Your vehicles",
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
-                fontSize = 20.sp
+                fontSize = 18.sp
             )
             Button(
                 modifier = Modifier
@@ -399,7 +406,7 @@ fun CarsSection(
             }
         }
         Spacer(modifier = Modifier.height(20.dp))
-        if (userVehicles.value.isEmpty()) {
+        if (viewModel.currentSavedVehicles.isEmpty()) {
             Column(
                 modifier = Modifier
                     .fillMaxSize(),
@@ -419,7 +426,7 @@ fun CarsSection(
                     .fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(userVehicles.value) { vehicle ->
+                items(viewModel.currentSavedVehicles) { vehicle ->
                     VehicleItem(viewModel, context, vehicle)
                 }
             }
@@ -440,7 +447,7 @@ fun VehicleItem(viewModel: LocationViewModel, context: Context, vehicle: Vehicle
             .fillMaxWidth()
             .clip(shape = RoundedCornerShape(5.dp))
             .background(Color.White)
-            .padding(10.dp),
+            .padding(10.dp, 5.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
@@ -457,7 +464,10 @@ fun VehicleItem(viewModel: LocationViewModel, context: Context, vehicle: Vehicle
                 )
             }
             Spacer(modifier = Modifier.width(10.dp))
-            vehicle.name?.let { Text(text = it) }
+            vehicle.name?.let { Text(text = it,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+                ) }
         }
         Row(
             modifier = Modifier.weight(1f),
@@ -470,7 +480,7 @@ fun VehicleItem(viewModel: LocationViewModel, context: Context, vehicle: Vehicle
                 contentDescription = "fuel icon"
             )
             Spacer(modifier = Modifier.width(10.dp))
-            vehicle.avgFuelConsumption?.let { Text(text = it.toString()) }
+            vehicle.avgFuelConsumption?.let { Text(text = it.toString() + " L/100km", fontSize = 13.sp) }
         }
         Row(
             modifier = Modifier.weight(0.5f),
@@ -624,11 +634,13 @@ fun ChangeUsernameDialog(
 fun AddVehicleDialog(
     showDialog: MutableState<Boolean>,
     onDismissRequest: () -> Unit,
-    onSave: (String, String, String) -> Unit,
+    onSave: (String, String, String, String) -> Unit,
+    context: Context,
 ) {
     val name = remember { mutableStateOf("") }
     val avgFuelConsumption = remember { mutableStateOf("") }
-    val type = remember { mutableStateOf("") }
+    val carType = remember { mutableStateOf("") }
+    val fuelType = remember { mutableStateOf("") }
 
     AlertDialog(onDismissRequest = { showDialog.value = false }, title = {
         Text(
@@ -637,6 +649,7 @@ fun AddVehicleDialog(
     }, text = {
         Column(
             modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             OutlinedTextFieldBackground(color = Color.White) {
                 OutlinedTextField(
@@ -702,17 +715,40 @@ fun AddVehicleDialog(
                 )
             }
             Spacer(modifier = Modifier.height(10.dp))
-            VehicleTypeDropdown(
-                onTypeSelected = { selectedType ->
-                    type.value = selectedType
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 0.dp, end = 0.dp),
+            ) {
+                VehicleTypeDropdown(
+                    onTypeSelected = { selectedType ->
+                        carType.value = selectedType
+                    }
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                VehicleFuelTypeDropdown(
+                    onTypeSelected = { selectedType ->
+                        fuelType.value = selectedType
+                    }
+                )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                modifier = Modifier.clickable {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.auto-data.net/en/"))
+                    context.startActivity(intent)
                 },
-                modifier = Modifier.weight(1f)
+                text = "Check your car fuel consumption",
+                fontWeight = FontWeight.Normal,
+                color = Color(0xFF0D99FF),
+                fontSize = 13.sp,
+                textDecoration = TextDecoration.Underline,
             )
         }
     }, confirmButton = {
         Button(
             onClick = {
-                onSave(name.value, avgFuelConsumption.value, type.value)
+                onSave(name.value, avgFuelConsumption.value, carType.value, fuelType.value)
                 showDialog.value = false
             }, shape = RoundedCornerShape(5.dp), colors = ButtonDefaults.buttonColors(
                 Color(0xFF0D99FF)
@@ -742,7 +778,7 @@ fun AddVehicleDialog(
 }
 
 @Composable
-fun VehicleTypeDropdown(onTypeSelected: (String) -> Unit, modifier: Modifier) {
+fun VehicleTypeDropdown(onTypeSelected: (String) -> Unit) {
     val options = listOf("Small car", "Big car", "Truck", "Motorbike")
     val optionsMap = mapOf(
         "Small car" to "small_car",
@@ -752,14 +788,20 @@ fun VehicleTypeDropdown(onTypeSelected: (String) -> Unit, modifier: Modifier) {
     )
 
     val expanded = remember { mutableStateOf(false) }
-    val text = remember { mutableStateOf("Select type") }
+    val text = remember { mutableStateOf("Vehicle type") }
+
+    var vehicleTypeParentSize by remember { mutableStateOf(IntSize.Zero) }
 
     Button(
         onClick = { expanded.value = true },
-        shape = RoundedCornerShape(50.dp),
+        shape = RoundedCornerShape(5.dp),
         modifier = Modifier
-            .fillMaxWidth()
-            .height(50.dp),
+            .fillMaxWidth(0.5f)
+            .padding(end = 0.dp)
+            .height(50.dp)
+            .onGloballyPositioned { coordinates ->
+                vehicleTypeParentSize = coordinates.size
+            },
         contentPadding = PaddingValues(0.dp),
         colors = ButtonDefaults.buttonColors(
             Color(0xFF0D99FF)
@@ -767,6 +809,7 @@ fun VehicleTypeDropdown(onTypeSelected: (String) -> Unit, modifier: Modifier) {
     ) {
         Row(
             horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(text.value)
             Icon(
@@ -776,6 +819,7 @@ fun VehicleTypeDropdown(onTypeSelected: (String) -> Unit, modifier: Modifier) {
         }
     }
     DropdownMenu(
+        modifier = Modifier.width(with(LocalDensity.current) { vehicleTypeParentSize.width.toDp() }),
         expanded = expanded.value,
         onDismissRequest = { expanded.value = false }) {
         options.forEach { option ->
@@ -794,6 +838,75 @@ fun VehicleTypeDropdown(onTypeSelected: (String) -> Unit, modifier: Modifier) {
                 text.value = option
                 expanded.value = false
             })
+        }
+    }
+}
+
+@Composable
+fun VehicleFuelTypeDropdown(onTypeSelected: (String) -> Unit) {
+    val options = listOf("Diesel", "Petrol", "LPG")
+    val optionsMap = mapOf(
+        "Diesel" to "diesel",
+        "Petrol" to "petrol",
+        "LPG" to "lpg",
+    )
+
+    val expanded = remember { mutableStateOf(false) }
+    val text = remember { mutableStateOf("Fuel type") }
+
+    var fuelTypeParentSize by remember { mutableStateOf(IntSize.Zero) }
+
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.CenterEnd
+    ) {
+        Button(
+            onClick = { expanded.value = true },
+            shape = RoundedCornerShape(5.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 0.dp)
+                .height(50.dp)
+                .onGloballyPositioned { coordinates ->
+                    fuelTypeParentSize = coordinates.size
+                },
+            contentPadding = PaddingValues(0.dp),
+            colors = ButtonDefaults.buttonColors(
+                Color(0xFF0D99FF)
+            )
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text.value)
+                Icon(
+                    Icons.Filled.ArrowDropDown,
+                    contentDescription = "Arrow dropdown"
+                )
+            }
+        }
+        DropdownMenu(
+            modifier = Modifier.width(with(LocalDensity.current) { fuelTypeParentSize.width.toDp() }),
+            expanded = expanded.value,
+            onDismissRequest = { expanded.value = false }) {
+            options.forEach { option ->
+                DropdownMenuItem(modifier = Modifier, text = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceAround
+                    ) {
+                        option.let {
+                            Text(it)
+                        }
+                    }
+                }, onClick = {
+                    optionsMap[option]?.let { onTypeSelected(it) }
+                    text.value = option
+                    expanded.value = false
+                })
+            }
         }
     }
 }
