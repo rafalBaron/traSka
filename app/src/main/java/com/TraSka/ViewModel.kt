@@ -1,26 +1,17 @@
 package com.TraSka
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.location.Geocoder
-import android.location.Location
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.datastore.core.DataStore
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -31,8 +22,6 @@ import com.android.volley.Request
 import com.android.volley.Response
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.Place
@@ -41,7 +30,6 @@ import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRe
 import com.google.android.libraries.places.api.net.FindCurrentPlaceRequest
 import com.google.firebase.auth.AuthCredential
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
@@ -49,16 +37,11 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.net.URL
-import java.util.prefs.Preferences
 import javax.inject.Inject
 
 sealed class LocationState {
@@ -120,6 +103,12 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
     private val _isLoggingLoading = MutableLiveData(true)
     val isLoggingLoading: LiveData<Boolean> = _isLoggingLoading
     private var job: Job? = null
+
+    val emissionsMap = mapOf(
+        "diesel" to 2.64f, // w kilogramach CO₂ na litr
+        "petrol" to 2.392f,
+        "lpg" to 1.65f
+    )
 
     //endregion
 
@@ -571,7 +560,7 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
                 if (vehicle != null) {
                     val burnedFuel =
                         currentSavingRouteLen / 1000 * (vehicle.avgFuelConsumption!! / 100)
-                    val co2 = burnedFuel * 2.68f
+                    val co2 = burnedFuel * emissionsMap[vehicle.fuelType]!!
                     currentNotOptimizedRoute = Route(
                         travelMode = travelMode,
                         len = currentSavingRouteLen,
@@ -652,7 +641,7 @@ class LocationViewModel @Inject constructor(@ApplicationContext applicationConte
                 if (vehicle != null) {
                     val burnedFuel =
                         currentSavingRouteLen / 1000 * (vehicle.avgFuelConsumption!! / 100)
-                    val co2 = burnedFuel * 2.68f
+                    val co2 = burnedFuel * emissionsMap[vehicle.fuelType]!!
 
                     currentOptimizedRoute = Route(
                         travelMode = travelMode,
