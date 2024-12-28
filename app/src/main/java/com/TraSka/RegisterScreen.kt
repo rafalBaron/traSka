@@ -15,9 +15,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
@@ -38,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -54,8 +57,6 @@ import androidx.navigation.NavController
 import com.TraSka.LocationViewModel
 import com.TraSka.R
 import com.TraSka.ScreenFlowHandler
-
-private var error: Boolean = false
 
 @Composable
 fun RegisterScreen(navController: NavController, viewModel: LocationViewModel) {
@@ -125,7 +126,8 @@ fun RegisterScreen(navController: NavController, viewModel: LocationViewModel) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(20.dp),
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.Center
             ) {
                 RegisterSection(navController, viewModel)
@@ -143,7 +145,6 @@ fun RegisterSection(navController: NavController, viewModel: LocationViewModel) 
     var password by remember { mutableStateOf("") }
     var rePassword by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
-    var error by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     val isLengthValid = isLengthValid(password)
@@ -262,7 +263,9 @@ fun RegisterSection(navController: NavController, viewModel: LocationViewModel) 
                     fontWeight = FontWeight(500),
                     color = Color(0xFF222831),
                     textDecoration = TextDecoration.None,
-                )
+                ),
+                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) })
             )
         }
 
@@ -305,7 +308,9 @@ fun RegisterSection(navController: NavController, viewModel: LocationViewModel) 
                     color = Color(0xFF222831),
                     textDecoration = TextDecoration.None,
                 ),
-                visualTransformation = PasswordVisualTransformation()
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) })
             )
         }
 

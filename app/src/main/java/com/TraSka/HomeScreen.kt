@@ -2,7 +2,6 @@ package com.TraSka.com.TraSka
 
 import android.annotation.SuppressLint
 import android.content.Context
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,31 +23,22 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -56,16 +46,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.TraSka.DeleteRouteDialog
 import com.TraSka.LocationViewModel
 import com.TraSka.R
 import com.TraSka.Route
 import com.TraSka.ScreenFlowHandler
 import com.TraSka.User
-import com.TraSka.Vehicle
 import kotlinx.coroutines.launch
 import java.util.Locale
-import kotlin.math.roundToLong
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -315,7 +302,7 @@ fun HomeScreen(navController: NavController, viewModel: LocationViewModel) {
                         contentPadding = PaddingValues(0.dp),
                         shape = RoundedCornerShape(5.dp),
                         onClick = {
-                            navController.navigate(ScreenFlowHandler.RoutePlannerScreen.route){
+                            navController.navigate(ScreenFlowHandler.RoutePlannerScreen.route) {
                                 popUpTo(navController.graph.startDestinationId) {
                                     saveState = true
                                 }
@@ -351,7 +338,12 @@ fun HomeScreen(navController: NavController, viewModel: LocationViewModel) {
 //region Composables
 
 @Composable
-fun RouteItem(navController: NavController, viewModel: LocationViewModel, context: Context, route: Route) {
+fun RouteItem(
+    navController: NavController,
+    viewModel: LocationViewModel,
+    context: Context,
+    route: Route
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -421,6 +413,9 @@ fun RouteItem(navController: NavController, viewModel: LocationViewModel, contex
                     onClick = {
                         viewModel.routePoints = route.point!!
                         route.travelMode?.let { viewModel.updateSelectedOption(it) }
+                        if (route.travelMode == "bicycling" || route.travelMode == "walking") {
+                            viewModel.updateSelectedCar("")
+                        }
                         if (route.vehicle != null) {
                             route.vehicle!!.name?.let { viewModel.updateSelectedCar(it) }
                         }
