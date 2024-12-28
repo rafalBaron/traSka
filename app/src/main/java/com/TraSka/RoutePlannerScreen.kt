@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Home
@@ -122,18 +123,6 @@ fun RoutePlannerScreen(
     val reorderableLazyListState = rememberReorderableLazyListState(lazyListState) { from, to ->
         viewModel.routePoints = viewModel.routePoints.toMutableList().apply {
             add(to.index, removeAt(from.index))
-        }
-    }
-
-    when {
-        notLoggedAlert.value -> {
-            AlertDialogExample(onDismissRequest = {
-                notLoggedAlert.value = false
-            }, onConfirmation = {
-                notLoggedAlert.value = false
-                navController.navigate(ScreenFlowHandler.LoginScreen.route)
-            }, dialogTitle = "Saving only for logged users!", icon = Icons.Default.Lock
-            )
         }
     }
 
@@ -401,10 +390,11 @@ fun RoutePlannerScreen(
                 contentPadding = PaddingValues(0.dp),
                 colors = ButtonDefaults.buttonColors(Color(0xFF0D99FF))
             ) {
-                Image(
+                Icon(
                     modifier = Modifier.size(30.dp, 30.dp),
-                    painter = painterResource(R.drawable.plus),
-                    contentDescription = null,
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "add",
+                    tint = Color.White
                 )
             }
         }
@@ -807,48 +797,6 @@ fun RoutePlannerScreen(
 }
 
 //region Composables
-
-@Composable
-fun AlertDialogExample(
-    onDismissRequest: () -> Unit,
-    onConfirmation: () -> Unit,
-    dialogTitle: String,
-    icon: ImageVector,
-) {
-    AlertDialog(icon = {
-        Image(
-            painter = painterResource(R.drawable.acc),
-            contentDescription = "acc",
-            modifier = Modifier.size(80.dp, 80.dp)
-        )
-
-    }, title = {
-        Text(text = dialogTitle)
-    }, onDismissRequest = {
-        onDismissRequest()
-    }, confirmButton = {
-        TextButton(
-            onClick = {
-                onConfirmation()
-            }, colors = ButtonDefaults.buttonColors(Color.Black), shape = RoundedCornerShape(5.dp)
-        ) {
-            Text(
-                "Login", fontSize = 18.sp
-
-            )
-        }
-    }, dismissButton = {
-        TextButton(
-            onClick = {
-                onDismissRequest()
-            }, colors = ButtonDefaults.buttonColors(Color.Black), shape = RoundedCornerShape(5.dp)
-        ) {
-            Text(
-                "Cancel", fontSize = 18.sp
-            )
-        }
-    })
-}
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
