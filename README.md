@@ -12,6 +12,14 @@ Android app for waypoints optimization between origin and destination. With Fire
 
 *From left: Main screen, Route planning, Optimized route visualization*
 
+<div align="center">
+  <img src="login_screen.jpg" width="250" alt="Login Screen" />
+  <img src="reg_screen.jpg" width="250" alt="Registration Screen" />
+  <img src="home_screen.jpg" width="250" alt="Home Screen" />
+</div>
+
+*From left: Login ccreen, Registration screen, Home screen*
+
 ## 🛠️ Technologies Used
 
 - **Kotlin** - Modern Android development
