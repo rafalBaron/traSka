@@ -6,7 +6,9 @@ Android app for waypoints optimization between origin and destination. With Fire
 
 <div align="center">
   <img src="main_screen.jpg" width="250" alt="Start Screen" />
+  <p> </p>
   <img src="route_planner.jpg" width="250" alt="Route Planning" />
+  <p> </p>
   <img src="optimized_route.jpg" width="250" alt="Optimized Route" />
 </div>
 
