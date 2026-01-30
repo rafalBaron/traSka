@@ -1,8 +1,8 @@
-# TraSka 📍
+# TraSka 
 
 Android app for waypoints optimization between origin and destination. With Firebase stored data and Google Cloud APIs (Places API, Directions API, Google Maps API)
 
-## 📱 Screenshots
+## Screenshots
 
 <div align="center">
   <img src="main_screen.jpg" width="250" alt="Start Screen" />
@@ -20,7 +20,7 @@ Android app for waypoints optimization between origin and destination. With Fire
 
 *From left: Login ccreen, Registration screen, Home screen*
 
-## 🛠️ Technologies Used
+## Technologies Used
 
 - **Kotlin** - Modern Android development
 - **Jetpack Compose** - Declarative UI framework
@@ -28,10 +28,10 @@ Android app for waypoints optimization between origin and destination. With Fire
 - **Google Cloud Platform** - Cloud infrastructure
 - **Google Maps Platform APIs** - Directions API, Places API for accurate routing
 
-## ✨ Key Features
+## Key Features
 
-- 🎯 Optimized routing between multiple waypoints to minimize travel time and distance
-- 🗺️ Integration with various Google Maps Platform APIs for accurate and efficient route calculation
-- 🎨 User-friendly interface built with Jetpack Compose
-- 💾 Cloud-based data synchronization with Firebase
-- 📍 Smart location search with Google Places API
+- Optimized routing between multiple waypoints to minimize travel time and distance
+- Integration with various Google Maps Platform APIs for accurate and efficient route calculation
+- User-friendly interface built with Jetpack Compose
+- Cloud-based data synchronization with Firebase
+- Smart location search with Google Places API
